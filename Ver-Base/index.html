@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Motor de Recomendación INICIAL</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1, h2 { color: #2c3e50; }
+        .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        select, button { padding: 10px; font-size: 16px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #45a049; }
+        ul { list-style-type: none; padding: 0; }
+        li { background: #e9ecef; margin: 5px 0; padding: 10px; border-radius: 5px; font-size: 16px; }
+        canvas { max-height: 300px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎬 Motor de Recomendación</h1>
+    
+    <!-- SECCIÓN 1: Recomendaciones -->
+    <div class="section">
+        <h2>1. Obtener Recomendaciones</h2>
+        <label for="userSelect">Seleccioná un usuario:</label><br>
+        <select id="userSelect">
+            <option value="">Cargando usuarios...</option>
+        </select>
+        <button onclick="getRecommendations()">Generar Recomendación</button>
+        
+        <h3>Resultados (Top 5):</h3>
+        <ul id="recommendationsList">
+            <li>Esperando consulta...</li>
+        </ul>
+    </div>
+
+    <!-- SECCIÓN 2: Popularidad -->
+    <div class="section" style="border-bottom: none;">
+        <h2>2. Análisis de Popularidad</h2>
+        <!-- El canvas donde Chart.js dibujará automáticamente -->
+        <canvas id="popularityChart"></canvas>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = "http://localhost:8000/api";
+    let chartInstance = null;
+
+    async function loadUsers() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users`);
+            const data = await response.json();
+            const select = document.getElementById("userSelect");
+            
+            select.innerHTML = ""; 
+            data.users.forEach(user => {
+                const option = document.createElement("option");
+                option.value = user.user_id;
+                option.textContent = user.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error cargando usuarios:", error);
+            document.getElementById("userSelect").innerHTML = "<option>Error de conexión</option>";
+        }
+    }
+
+    async function getRecommendations() {
+        const userId = document.getElementById("userSelect").value;
+        const list = document.getElementById("recommendationsList");
+        
+        if (!userId) return alert("Por favor, seleccioná un usuario válido.");
+        
+        list.innerHTML = "<li>Calculando... ⏳</li>";
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/recommend/${userId}`);
+            const data = await response.json();
+            
+            list.innerHTML = "";
+            if (data.recommendations && data.recommendations.length > 0) {
+                data.recommendations.forEach((movie, index) => {
+                    const li = document.createElement("li");
+                    li.textContent = `${index + 1}. ${movie}`;
+                    list.appendChild(li);
+                });
+            } else {
+                list.innerHTML = "<li>No hay suficientes datos para recomendar.</li>";
+            }
+        } catch (error) {
+            console.error("Error en recomendaciones:", error);
+            list.innerHTML = "<li>❌ Error conectando con la API.</li>";
+        }
+    }
+
+    async function getPopularity() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/popularity`);
+            const data = await response.json();
+            
+            const titles = data.popular_movies.map(m => m.title);
+            const counts = data.popular_movies.map(m => m.count);
+
+            renderChart(titles, counts);
+        } catch (error) {
+            console.error("Error en popularidad:", error);
+        }
+    }
+
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('popularityChart').getContext('2d');
+        
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Cantidad de Ratings',
+                    data: data,
+                    backgroundColor: '#2196F3',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                indexAxis: 'y', 
+                responsive: true,
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    }
+
+    // Cargar usuarios y el gráfico automáticamente al abrir la página
+    window.onload = async () => {
+        await loadUsers();
+        await getPopularity();
+    };
+</script>
+
+</body>
+</html>
