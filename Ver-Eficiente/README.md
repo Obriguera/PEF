@@ -23,3 +23,11 @@ Requirements in are in their corresponding file (must use venv)
 > pip install -r requirements.txt
 
 For this academic version, the data is loaded into memory to facilitate evaluation without external dependencies. However, the engine (recommender_core.py) is designed in a modular way to scale and consume massive datasets from CSV files (e.g., MovieLens Dataset) or SQL databases
+
+---
+
+uvicorn main:app --reload
+
+scalene benchmark.py
+
+scalene --html --outfile reporte_scalene.html benchmark.py

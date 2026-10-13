@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentación de Movie Recommender - Versión Optimizada &mdash; Movie Recommender - Versión Optimizada 2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=51b770b3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Movie Recommender - Versión Optimizada
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Documentación de Movie Recommender - Versión Optimizada</a><ul>
+<li><a class="reference internal" href="#contenido">Contenido:</a></li>
+<li><a class="reference internal" href="#module-recommender_core">Módulo Recommender Core</a><ul>
+<li><a class="reference internal" href="#recommender_core.calculate_similarity"><code class="docutils literal notranslate"><span class="pre">calculate_similarity()</span></code></a></li>
+<li><a class="reference internal" href="#recommender_core.prepare_data"><code class="docutils literal notranslate"><span class="pre">prepare_data()</span></code></a></li>
+<li><a class="reference internal" href="#recommender_core.recommend_movies"><code class="docutils literal notranslate"><span class="pre">recommend_movies()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-large_file_handler">Módulo Large File Handler</a><ul>
+<li><a class="reference internal" href="#large_file_handler.generate_large_ratings_csv"><code class="docutils literal notranslate"><span class="pre">generate_large_ratings_csv()</span></code></a></li>
+<li><a class="reference internal" href="#large_file_handler.process_large_file_parallel"><code class="docutils literal notranslate"><span class="pre">process_large_file_parallel()</span></code></a></li>
+<li><a class="reference internal" href="#large_file_handler.run_point_3_demonstration"><code class="docutils literal notranslate"><span class="pre">run_point_3_demonstration()</span></code></a></li>
+<li><a class="reference internal" href="#large_file_handler.stream_ratings_in_batches"><code class="docutils literal notranslate"><span class="pre">stream_ratings_in_batches()</span></code></a></li>
+<li><a class="reference internal" href="#large_file_handler.write_aggregated_results_buffered"><code class="docutils literal notranslate"><span class="pre">write_aggregated_results_buffered()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis_utils">Módulo Analysis Utils</a><ul>
+<li><a class="reference internal" href="#analysis_utils.analyze_popularity"><code class="docutils literal notranslate"><span class="pre">analyze_popularity()</span></code></a></li>
+<li><a class="reference internal" href="#analysis_utils.invalidar_cache_popularidad"><code class="docutils literal notranslate"><span class="pre">invalidar_cache_popularidad()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-main">Módulo Main (FastAPI API)</a><ul>
+<li><a class="reference internal" href="#main.NewRating"><code class="docutils literal notranslate"><span class="pre">NewRating</span></code></a><ul>
+<li><a class="reference internal" href="#main.NewRating.model_config"><code class="docutils literal notranslate"><span class="pre">NewRating.model_config</span></code></a></li>
+<li><a class="reference internal" href="#main.NewRating.movie_id"><code class="docutils literal notranslate"><span class="pre">NewRating.movie_id</span></code></a></li>
+<li><a class="reference internal" href="#main.NewRating.rating"><code class="docutils literal notranslate"><span class="pre">NewRating.rating</span></code></a></li>
+<li><a class="reference internal" href="#main.NewRating.user_id"><code class="docutils literal notranslate"><span class="pre">NewRating.user_id</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#main.add_new_rating"><code class="docutils literal notranslate"><span class="pre">add_new_rating()</span></code></a></li>
+<li><a class="reference internal" href="#main.get_popularity"><code class="docutils literal notranslate"><span class="pre">get_popularity()</span></code></a></li>
+<li><a class="reference internal" href="#main.get_recommendations"><code class="docutils literal notranslate"><span class="pre">get_recommendations()</span></code></a></li>
+<li><a class="reference internal" href="#main.get_users"><code class="docutils literal notranslate"><span class="pre">get_users()</span></code></a></li>
+<li><a class="reference internal" href="#main.process_large_file_endpoint"><code class="docutils literal notranslate"><span class="pre">process_large_file_endpoint()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-y-tablas">Índices y Tablas</a></li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Movie Recommender - Versión Optimizada</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Documentación de Movie Recommender - Versión Optimizada</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="documentacion-de-movie-recommender-version-optimizada">
+<h1>Documentación de Movie Recommender - Versión Optimizada<a class="headerlink" href="#documentacion-de-movie-recommender-version-optimizada" title="Link to this heading"></a></h1>
+<p>Bienvenido a la documentación oficial del sistema de recomendación optimizado.
+Proyecto desarrollado para la cátedra de <strong>Programación Eficiente (PEF)</strong>.</p>
+<section id="contenido">
+<h2>Contenido:<a class="headerlink" href="#contenido" title="Link to this heading"></a></h2>
+</section>
+<section id="module-recommender_core">
+<span id="modulo-recommender-core"></span><h2>Módulo Recommender Core<a class="headerlink" href="#module-recommender_core" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="recommender_core.calculate_similarity">
+<span class="sig-prename descclassname"><span class="pre">recommender_core.</span></span><span class="sig-name descname"><span class="pre">calculate_similarity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">utility_matrix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/recommender_core.html#calculate_similarity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#recommender_core.calculate_similarity" title="Link to this definition"></a></dt>
+<dd><p>Cálculo de similitudes totalmente vectorizado con NumPy.</p>
+<p>OPTIMIZACIÓN ALGORÍTMICA Y DE RENDIMIENTO:
+En lugar de iterar con un doble bucle for en Python puro y calcular sum()
+con expresiones generadoras (&lt;genexpr&gt;) sobre sets O(N^2) veces, se
+construye la matriz de utilidad R (usuarios x películas) y se vectoriza
+el producto punto y las normas con numpy.dot y numpy.linalg.norm en C/BLAS.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>(similarity_matrix np.ndarray[float32], user_index dict)</dt><dd><p>user_index mapea user_id -&gt; índice de fila/columna en la matriz.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="recommender_core.prepare_data">
+<span class="sig-prename descclassname"><span class="pre">recommender_core.</span></span><span class="sig-name descname"><span class="pre">prepare_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ratings_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/recommender_core.html#prepare_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#recommender_core.prepare_data" title="Link to this definition"></a></dt>
+<dd><p>Matriz de utilidad.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="recommender_core.recommend_movies">
+<span class="sig-prename descclassname"><span class="pre">recommender_core.</span></span><span class="sig-name descname"><span class="pre">recommend_movies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">utility_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_similarities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">movies_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/recommender_core.html#recommend_movies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#recommender_core.recommend_movies" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-large_file_handler">
+<span id="modulo-large-file-handler"></span><h2>Módulo Large File Handler<a class="headerlink" href="#module-large_file_handler" title="Link to this heading"></a></h2>
+<p>Módulo de procesamiento eficiente de archivos grandes.</p>
+<p>Punto 3 del Parcial: Escritura y lectura de archivos grandes mediante:
+1. Buffering: Manejo de buffers de E/S en disco para reducir llamadas al sistema (syscalls).
+2. Batching (Lotes): Procesamiento por chunks para mantener un consumo de memoria constante O(1).
+3. Procesamiento en Paralelo: Distribución de lotes entre múltiples hilos o procesos (concurrent.futures).</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="large_file_handler.generate_large_ratings_csv">
+<span class="sig-prename descclassname"><span class="pre">large_file_handler.</span></span><span class="sig-name descname"><span class="pre">generate_large_ratings_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_records</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_users</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_movies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65536</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/large_file_handler.html#generate_large_ratings_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#large_file_handler.generate_large_ratings_csv" title="Link to this definition"></a></dt>
+<dd><p>Genera un archivo CSV masivo de ratings simulando un dataset de producción.</p>
+<dl class="simple">
+<dt>Aplica:</dt><dd><ul class="simple">
+<li><p>Buffering: open(…, buffering=buffer_size) minimiza accesos a disco.</p></li>
+<li><p>Batching de escritura: escribe bloques de filas a disco en lugar de línea por línea.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="large_file_handler.process_large_file_parallel">
+<span class="sig-prename descclassname"><span class="pre">large_file_handler.</span></span><span class="sig-name descname"><span class="pre">process_large_file_parallel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65536</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/large_file_handler.html#process_large_file_parallel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#large_file_handler.process_large_file_parallel" title="Link to this definition"></a></dt>
+<dd><p>Lee y procesa un archivo masivo combinando Buffering, Batching y Procesamiento Paralelo.</p>
+<dl class="simple">
+<dt>Estrategia:</dt><dd><ol class="arabic simple">
+<li><p>El generador stream_ratings_in_batches() lee trozos del archivo en memoria acotada.</p></li>
+<li><p>Los lotes se envían a un ProcessPoolExecutor para procesar en núcleos paralelos de CPU.</p></li>
+<li><p>El proceso principal consolida los resultados parciales de cada worker.</p></li>
+</ol>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="large_file_handler.run_point_3_demonstration">
+<span class="sig-prename descclassname"><span class="pre">large_file_handler.</span></span><span class="sig-name descname"><span class="pre">run_point_3_demonstration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/large_file_handler.html#run_point_3_demonstration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#large_file_handler.run_point_3_demonstration" title="Link to this definition"></a></dt>
+<dd><p>Demostración comparativa para la defensa del Parcial:</p>
+<dl class="simple">
+<dt>Compara:</dt><dd><ol class="arabic simple">
+<li><p>Enfoque Ingenuo: Cargar archivo completo en memoria RAM con readlines().</p></li>
+<li><p>Enfoque Optimizado: Buffer I/O + Streaming por Chunks + Procesamiento Paralelo.</p></li>
+</ol>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="large_file_handler.stream_ratings_in_batches">
+<span class="sig-prename descclassname"><span class="pre">large_file_handler.</span></span><span class="sig-name descname"><span class="pre">stream_ratings_in_batches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65536</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/large_file_handler.html#stream_ratings_in_batches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#large_file_handler.stream_ratings_in_batches" title="Link to this definition"></a></dt>
+<dd><p>Generador que lee un archivo grande por bloques (batches) utilizando un buffer I/O.</p>
+<dl class="simple">
+<dt>Ventaja de Memoria:</dt><dd><p>Mantiene un footprint de memoria acotado a ‘batch_size’ registros,
+evitando cargar el archivo completo en RAM (O(batch_size) vs O(Total_Archivo)).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="large_file_handler.write_aggregated_results_buffered">
+<span class="sig-prename descclassname"><span class="pre">large_file_handler.</span></span><span class="sig-name descname"><span class="pre">write_aggregated_results_buffered</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregated_stats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">65536</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/large_file_handler.html#write_aggregated_results_buffered"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#large_file_handler.write_aggregated_results_buffered" title="Link to this definition"></a></dt>
+<dd><p>Escribe los resultados procesados a disco usando buffer y streaming.</p>
+</dd></dl>
+
+</section>
+<section id="module-analysis_utils">
+<span id="modulo-analysis-utils"></span><h2>Módulo Analysis Utils<a class="headerlink" href="#module-analysis_utils" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="analysis_utils.analyze_popularity">
+<span class="sig-prename descclassname"><span class="pre">analysis_utils.</span></span><span class="sig-name descname"><span class="pre">analyze_popularity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ratings_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">movies_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_utils.html#analyze_popularity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_utils.analyze_popularity" title="Link to this definition"></a></dt>
+<dd><p>Calcula la popularidad implementando Caching Inteligente.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="analysis_utils.invalidar_cache_popularidad">
+<span class="sig-prename descclassname"><span class="pre">analysis_utils.</span></span><span class="sig-name descname"><span class="pre">invalidar_cache_popularidad</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_utils.html#invalidar_cache_popularidad"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_utils.invalidar_cache_popularidad" title="Link to this definition"></a></dt>
+<dd><p>Estrategia de invalidación: Se llama cuando cambia el historial de preferencias.</p>
+</dd></dl>
+
+</section>
+<section id="module-main">
+<span id="modulo-main-fastapi-api"></span><h2>Módulo Main (FastAPI API)<a class="headerlink" href="#module-main" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="main.NewRating">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">NewRating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">movie_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rating</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#NewRating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.NewRating" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="main.NewRating.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></span><a class="headerlink" href="#main.NewRating.model_config" title="Link to this definition"></a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="main.NewRating.movie_id">
+<span class="sig-name descname"><span class="pre">movie_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#main.NewRating.movie_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="main.NewRating.rating">
+<span class="sig-name descname"><span class="pre">rating</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#main.NewRating.rating" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="main.NewRating.user_id">
+<span class="sig-name descname"><span class="pre">user_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#main.NewRating.user_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.add_new_rating">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">add_new_rating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rating_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#main.NewRating" title="main.NewRating"><span class="pre">NewRating</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#add_new_rating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.add_new_rating" title="Link to this definition"></a></dt>
+<dd><p>Simula agregar una nueva valoración e invalida el caché.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.get_popularity">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">get_popularity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#get_popularity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.get_popularity" title="Link to this definition"></a></dt>
+<dd><p>Devuelve los datos crudos para armar el gráfico en la web.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.get_recommendations">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">get_recommendations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#get_recommendations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.get_recommendations" title="Link to this definition"></a></dt>
+<dd><p>Devuelve las recomendaciones en formato JSON.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.get_users">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">get_users</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#get_users"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.get_users" title="Link to this definition"></a></dt>
+<dd><p>Devuelve la lista de usuarios para armar el selector en la web.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="main.process_large_file_endpoint">
+<span class="sig-prename descclassname"><span class="pre">main.</span></span><span class="sig-name descname"><span class="pre">process_large_file_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/main.html#process_large_file_endpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#main.process_large_file_endpoint" title="Link to this definition"></a></dt>
+<dd><p>Punto 3 del Parcial: Endpoint para procesamiento de archivos grandes.
+Demuestra generación con buffer, streaming por lotes (batching) y paralelismo.</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="indices-y-tablas">
+<h1>Índices y Tablas<a class="headerlink" href="#indices-y-tablas" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Programación Eficiente - UBP.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

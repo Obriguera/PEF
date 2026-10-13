@@ -1,0 +1,25 @@
+Temas Segundo parcial: sobre el primer parcial agregar
+1. Eliminar codigo redundante  LISTO
+
+2. Compiladores y herramientas de optimizacion (usar una de acuerdo al lenguaje que usen):  LISTO
+python -> scalene - py-spy - SnakeViz (Perfilado con Scalene y SnakeViz completado)
+
+Herramientas Generales: YourKit - New Relic​ - Elastic APM​ (aplicar una, pueden usar cualquier otra)
+
+3.Escritura y lectura de archivos grandes -> batching - buffer - procesamiento en paralelo  LISTO (large_file_handler.py)
+
+4.legibilidad y mantenibilidad: nombre de variables - comentarios y docstring - organizacion y formato del codigo: pep 8  LISTO (Flake8 100% OK)
+
+5.Uso de generadores de documentacion: Sphinx (se puede usar cualquier otra herramienta)  LISTO (docs/_build/html)
+
+6.Herramientas de analisis de calidad:SonarQube (se puede usar cualquier herramineta)  LISTO (Radon CC y MI: Rango A)
+
+7.Refactorizacion  LISTO (NumPy BLAS vectorizado, Heap Top-N, Caching O(1))
+8.Testing  LISTO (pytest 11/11 tests aprobados)
+9.Uso de algun framework ​(EJ: Django, Flask, TensorFlow, PyTorch, ScyPy)  LISTO (FastAPI + NumPy)
+
+
+
+Scalene view
+
+snakeviz mi_programa.prof

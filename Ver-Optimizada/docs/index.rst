@@ -1,0 +1,43 @@
+Documentación de Movie Recommender - Versión Optimizada
+=========================================================
+
+Bienvenido a la documentación oficial del sistema de recomendación optimizado.
+Proyecto desarrollado para la cátedra de **Programación Eficiente (PEF)**.
+
+Contenido:
+----------
+
+
+Módulo Recommender Core
+-----------------------
+.. automodule:: recommender_core
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Módulo Large File Handler
+-------------------------
+.. automodule:: large_file_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Módulo Analysis Utils
+---------------------
+.. automodule:: analysis_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Módulo Main (FastAPI API)
+-------------------------
+.. automodule:: main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Índices y Tablas
+================
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
