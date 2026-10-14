@@ -1,33 +1,20 @@
-Final project for Declarative Programming.
--------------------------------------------
-📚Objective: Create a system that suggests books or movies to the user based on their previous preferences.
+# Versión Optimizada (Parcial 2)
 
-Tools:
+Versión final del motor de recomendaciones: NumPy vectorizado, archivos grandes con buffer, lotes y paralelismo, documentación Sphinx, análisis de calidad con Flake8 y Radon, tests con pytest y API FastAPI.
 
-Pandas to manage user and rating datasets.
+La documentación completa (caso de uso, planteo del problema, evolución desde el Parcial 1, decisiones de diseño, resultados y cómo ejecutar) está en el [README principal](../README.md).
 
-NumPy to create similarity matrices.
+## Inicio rápido
 
-Matplotlib to display recommendations and popularity analysis. 
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
 
-AI Algorithm: Collaborative filtering or content-based models.(INFO: https://www.ibm.com/es-es/think/topics/collaborative-filtering & https://es.wikipedia.org/wiki/Filtrado_colaborativo)
+Otros documentos de esta carpeta:
 
-INCLUDE GRAPHICAL INTERFACE
-
-Requirements in are in their corresponding file (must use venv)
-
-> python -m venv .venv
-
->  . .venv\Scripts\Activate.ps1
-
-> pip install -r requirements.txt
-
-For this academic version, the data is loaded into memory to facilitate evaluation without external dependencies. However, the engine (recommender_core.py) is designed in a modular way to scale and consume massive datasets from CSV files (e.g., MovieLens Dataset) or SQL databases
-
----
-
-uvicorn main:app --reload
-
-scalene benchmark.py
-
-scalene --html --outfile reporte_scalene.html benchmark.py
+- [PARCIAL_2_REPORTE_FINAL.md](PARCIAL_2_REPORTE_FINAL.md): resumen del Parcial 2 para la defensa.
+- [quality_report.md](quality_report.md): reporte de Flake8 y Radon.
+- `docs/_build/html/index.html`: documentación generada con Sphinx.

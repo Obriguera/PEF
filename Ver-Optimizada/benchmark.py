@@ -47,11 +47,10 @@ if __name__ == "__main__":
     run_baseline_test()
 
 
-# Se paralelizó el motor de recomendaciones (recommend_movies)
-#  utilizando concurrent.futures.ThreadPoolExecutor.
-# Son independientes porque ninguna recomendación altera
-# la matriz principal compartida. Se eligió hilos en lugar
-# de multiprocesamiento (ProcessPoolExecutor) para evitar el
-# masivo overhead de memoria que implicaría clonar las estructuras
-#  de datos (matrices de similitud) a múltiples procesos, asumiendo
-#  ese trade-off arquitectónico.
+# Concurrencia (decisión del Parcial 1): las peticiones a la API se atienden
+# en paralelo porque FastAPI ejecuta los endpoints `def` en su pool de hilos.
+# Las recomendaciones solo leen la matriz compartida, así que no hay
+# condiciones de carrera. Se descartó ProcessPoolExecutor para este caso
+# porque replicaría la matriz en cada proceso. Por el GIL, los hilos dan
+# concurrencia de peticiones, no paralelismo del cálculo.
+# El paralelismo real con procesos está en large_file_handler.py (Parcial 2).

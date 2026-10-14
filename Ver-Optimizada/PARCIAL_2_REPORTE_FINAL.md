@@ -24,10 +24,10 @@
 ## 🔍 Detalles Destacados para la Defensa
 
 ### 1. Optimización del Recomendador (Punto 2 y 7)
-- **Problema detectado por Scalene:** 190.3 MB de pico de memoria y 2 millones de llamadas a `builtins.sum` y generadores `<genexpr>`.
+- **Problema detectado por Scalene:** 230.5 MB de pico de memoria y 2 millones de llamadas a `builtins.sum` y generadores `<genexpr>`.
 - **Solución implementada:** Se sustituyó el diccionario de diccionarios por un `np.ndarray` contiguo en `float32` y operaciones vectorizadas en C (`np.dot` y `np.linalg.norm`).
 - **Impacto medido:**
-  - Reducción de memoria de **190.3 MB a 36.5 MB (-81%)**.
+  - Reducción de memoria de **230.5 MB a 36.4 MB (-84%)** (`max_footprint_mb` de `scalene-profile.json` en Ver-Base y Ver-Optimizada).
   - Fracción de memoria Python reducida de **99.99% a 17%** (83% delegado a C nativo).
   - Tiempo de cálculo de similitudes: de ~15-20 s a **0.06 s (60 ms)**.
 
