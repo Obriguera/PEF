@@ -23,7 +23,6 @@ def test_recomendador_igual_al_golden_master(dataset):
     assert actual["user_index"] == esperado["user_index"]
     assert actual["similarity_matrix"] == esperado["similarity_matrix"]
     assert actual["recommendations"] == esperado["recommendations"]
-    assert actual["cosine_dicts"] == esperado["cosine_dicts"]
 
 
 def test_matriz_de_similitud_es_float32():

@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from data_models import MOVIES_DATA, RATINGS_DATA, Movie, Rating  # noqa: E402
 from recommender_core import (  # noqa: E402
-    _cosine_similarity,
     calculate_similarity,
     prepare_data,
     recommend_movies,
@@ -54,9 +53,6 @@ def compute(ratings: list[Rating], movies: list[Movie]) -> dict[str, Any]:
         "recommendations": {
             str(u): recommend_movies(u, utility_matrix, (similarity_matrix, user_index), movies, top_n=len(movies))
             for u in users
-        },
-        "cosine_dicts": {
-            f"{a}-{b}": _cosine_similarity(utility_matrix[a], utility_matrix[b]) for a in users for b in users
         },
     }
 

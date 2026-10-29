@@ -1,6 +1,5 @@
 import heapq
-from collections.abc import Iterable, Mapping
-from typing import Any
+from collections.abc import Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -24,47 +23,6 @@ def prepare_data(ratings_data: Iterable[Rating]) -> UtilityMatrix:
             utility_matrix[u] = {}
         utility_matrix[u][m] = rating
     return utility_matrix
-
-
-def _cosine_similarity(
-    vector_a: Mapping[int, float] | npt.ArrayLike, vector_b: Mapping[int, float] | npt.ArrayLike
-) -> float:
-    """Calcula la similitud coseno entre dos vectores usando NumPy.
-
-    Acepta dos diccionarios ``{movie_id: rating}`` (vectores dispersos) o dos vectores densos.
-
-    OPTIMIZACIÓN: Reemplaza las funciones nativas de Python (sum, bucles, <genexpr>)
-    por álgebra lineal vectorizada en C/C++ usando numpy.dot y numpy.linalg.norm.
-    """
-    if isinstance(vector_a, dict) and isinstance(vector_b, dict):
-        return _cosine_from_dicts(vector_a, vector_b)
-    return _cosine_from_arrays(vector_a, vector_b)
-
-
-def _cosine_from_dicts(vector_a: Mapping[int, float], vector_b: Mapping[int, float]) -> float:
-    """Similitud coseno entre vectores dispersos: el producto punto usa solo las películas en común."""
-    intersection = list(set(vector_a.keys()) & set(vector_b.keys()))
-    if not intersection:
-        return 0.0
-    inter_a = np.array([vector_a[m] for m in intersection], dtype=np.float32)
-    inter_b = np.array([vector_b[m] for m in intersection], dtype=np.float32)
-    norm_a = np.linalg.norm(np.array(list(vector_a.values()), dtype=np.float32))
-    norm_b = np.linalg.norm(np.array(list(vector_b.values()), dtype=np.float32))
-    return _cosine_from_norms(np.dot(inter_a, inter_b), norm_a, norm_b)
-
-
-def _cosine_from_arrays(vector_a: npt.ArrayLike, vector_b: npt.ArrayLike) -> float:
-    """Similitud coseno entre vectores densos."""
-    v_a = np.asarray(vector_a, dtype=np.float32)
-    v_b = np.asarray(vector_b, dtype=np.float32)
-    return _cosine_from_norms(np.dot(v_a, v_b), np.linalg.norm(v_a), np.linalg.norm(v_b))
-
-
-def _cosine_from_norms(dot: np.floating[Any], norm_a: np.floating[Any], norm_b: np.floating[Any]) -> float:
-    """Cociente del coseno; si alguno de los vectores es nulo, la similitud es 0.0."""
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return float(dot / (norm_a * norm_b))
 
 
 def calculate_similarity(utility_matrix: UtilityMatrix) -> UserSimilarities:
