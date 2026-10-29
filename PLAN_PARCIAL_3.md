@@ -50,7 +50,7 @@ README, en la documentación y en las diapositivas.
 | Fase | Contenido | Estado |
 |---|---|---|
 | 0. Preparar el repo | Locks con hashes, `pyproject.toml`, `tasks.py`, `.gitignore` | ✅ PR #1, tag `parcial3-fase0` |
-| 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2 (pendiente de merge) |
+| 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2, tag `parcial3-fase1` |
 | 2. Rendimiento y memoria | `benchmark.py` → pytest-benchmark con línea base, test de memoria con tracemalloc, job de profiling; además, `spawn` en el `ProcessPoolExecutor` y corregir `records_processed` en el endpoint | ⏳ |
 | 3. Seguridad | Bandit, Gitleaks y pip-audit en el CI, Dependabot, CodeQL, `SECURITY.md` con la política y las excepciones | ⏳ (Bandit, Gitleaks y pip-audit ya están en `tasks.py`) |
 | 4. Pipeline | `.github/workflows/ci.yml` + protección de `master` (la configura el dueño del repo) | ⏳ |
@@ -80,3 +80,51 @@ setup (pip con hashes + caché)
 - La Base tarda unos 3 minutos con 2.000 usuarios, así que esa medición va en un workflow
   manual o semanal, no en cada push.
 - `metrics/parcial3-fase0.json` y los tags de cada fase ya sirven como puntos de comparación.
+
+## Cómo retomar en una sesión nueva
+
+Todo el estado del trabajo está en el repo. Para seguir:
+
+1. Abrir una sesión con `RicLagoria/PEF` como repositorio y pedir: *"Leé `PLAN_PARCIAL_3.md`
+   y seguí con la próxima fase pendiente"*.
+2. Preparar el entorno en `Ver-Optimizada/`:
+   `uv venv .venv && uv pip install --python .venv/bin/python --require-hashes -r requirements-dev.txt`
+   (en Windows: `python -m venv .venv` y `pip install --require-hashes -r requirements-dev.txt`).
+3. Verificar el punto de partida con `python tasks.py ci`, que debe terminar en verde.
+
+### Dónde está cada cosa
+
+| Qué | Dónde |
+|---|---|
+| Requerimientos, decisiones y estado | este archivo |
+| Métricas de cada versión | `Ver-Optimizada/metrics/parcial3-fase*.json` |
+| Antes/después de la Fase 1, con notas | `Ver-Optimizada/LINEA_BASE_FASE1.md` |
+| Comandos de todos los controles | `Ver-Optimizada/tasks.py` (`python tasks.py` los lista) |
+| Configuración de las herramientas | `Ver-Optimizada/pyproject.toml` |
+| Golden master del recomendador | `Ver-Optimizada/tests/golden.py` y `tests/fixtures/` |
+| Historial y discusión de cada fase | PRs del fork y mensajes de commit |
+| Enunciado original | `Parcial-3.docx` (fuera del repo) |
+
+### Flujo de trabajo
+
+- Cada fase va en una rama `claude/...` creada desde `master`, con un commit por paso y un PR.
+  Después del merge, el estado se etiqueta como `parcial3-faseN`.
+- Las sesiones de Claude no pueden subir tags (el proxy devuelve 403). El tag se crea y se
+  sube desde una máquina local.
+- El `master` del fork se sincroniza con `Obriguera/PEF` mediante PRs.
+
+### Trampas conocidas
+
+- **El golden master compara por igualdad exacta.** Cualquier cambio que altere el orden de las
+  sumas de floats lo rompe, aunque el cambio sea correcto. Ejemplos: usar `sum()`, que desde
+  Python 3.12 hace suma compensada; reordenar las columnas de la matriz; vectorizar
+  `recommend_movies`. Si un cambio así es intencional (por ejemplo, una "Optimizada v3"),
+  se regenera la referencia con `python tests/golden.py` y se justifica en el commit.
+- **`POST /api/rate` modifica `RATINGS_DATA` de forma global.** `tests/test_api.py` lo restaura
+  con un fixture; cualquier test nuevo de la API tiene que mantener ese aislamiento.
+- **coverage no mide los subprocesos del `ProcessPoolExecutor`.** El worker se testea llamándolo
+  en forma directa.
+- **Los tests de rendimiento deben medir contra el tag de la versión anterior**, con el mínimo de
+  varias repeticiones. La Fase 1 midió `recommend_movies` en 447 ms → 198 ms con 400 usuarios ×
+  300 películas y 20.000 ratings.
+
