@@ -1,0 +1,44 @@
+{
+  "version": "parcial3-fase1",
+  "commit": "dc9a68e",
+  "fecha": "2026-10-29",
+  "entorno": {"python": "3.13.17", "deps": "requirements-dev.txt (hashes verificados)"},
+  "complejidad": {
+    "cc_promedio": 2.66,
+    "cc_rango_promedio": "A",
+    "bloques_analizados": 29,
+    "bloques_peor_que_A": {},
+    "cc_maxima": 5,
+    "modulos_peor_que_A": [],
+    "mi": {
+      "recommender_core": 67.59,
+      "analysis_utils": 84.93,
+      "large_file_handler": 54.19,
+      "main": 80.29,
+      "data_models": 100.0
+    }
+  },
+  "cobertura": {
+    "total": 100.0,
+    "umbral": 80,
+    "tests": 24,
+    "por_modulo": {
+      "analysis_utils": 100,
+      "data_models": 100,
+      "large_file_handler": 100,
+      "main": 100,
+      "recommender_core": 100
+    }
+  },
+  "mypy": {"errores": 0, "archivos_con_errores": [], "strict_nucleo": "ok"},
+  "ruff": {"errores": 0, "por_regla": {}, "archivos_sin_formato": 0},
+  "bandit": {"alta": 0, "media": 0, "baja": 3, "detalle_baja": "B311 random en generate_large_ratings_csv (datos sintéticos)"},
+  "pip_audit": {"vulnerabilidades": 0},
+  "sphinx_W": "ok",
+  "loc": {"sloc_nucleo": 468, "comentarios": 56},
+  "rendimiento": {
+    "metodo": "mínimo de 7 repeticiones; 400 usuarios x 300 películas, 20.000 ratings; recommend_movies para 40 usuarios",
+    "recommend_movies_ms": {"parcial3-fase0": 447, "parcial3-fase1": 198},
+    "calculate_similarity_ms": {"parcial3-fase0": 4.2, "parcial3-fase1": 4.2}
+  }
+}

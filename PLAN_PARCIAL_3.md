@@ -50,8 +50,8 @@ README, en la documentación y en las diapositivas.
 | Fase | Contenido | Estado |
 |---|---|---|
 | 0. Preparar el repo | Locks con hashes, `pyproject.toml`, `tasks.py`, `.gitignore` | ✅ PR #1, tag `parcial3-fase0` |
-| 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | 🔄 PR #2 |
-| 2. Rendimiento y memoria | `benchmark.py` → pytest-benchmark con línea base, test de memoria con tracemalloc, job de profiling | ⏳ |
+| 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2 (pendiente de merge) |
+| 2. Rendimiento y memoria | `benchmark.py` → pytest-benchmark con línea base, test de memoria con tracemalloc, job de profiling; además, `spawn` en el `ProcessPoolExecutor` y corregir `records_processed` en el endpoint | ⏳ |
 | 3. Seguridad | Bandit, Gitleaks y pip-audit en el CI, Dependabot, CodeQL, `SECURITY.md` con la política y las excepciones | ⏳ (Bandit, Gitleaks y pip-audit ya están en `tasks.py`) |
 | 4. Pipeline | `.github/workflows/ci.yml` + protección de `master` (la configura el dueño del repo) | ⏳ |
 | 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
