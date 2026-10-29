@@ -1,8 +1,23 @@
+import pytest
 from starlette.testclient import TestClient
 
+from analysis_utils import invalidar_cache_popularidad
+from data_models import RATINGS_DATA
 from main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def restaurar_estado_global():
+    """POST /api/rate modifica RATINGS_DATA y el caché de popularidad, que son globales.
+
+    Se restauran después de cada test para no contaminar al resto de la suite.
+    """
+    ratings_originales = list(RATINGS_DATA)
+    yield
+    RATINGS_DATA[:] = ratings_originales
+    invalidar_cache_popularidad()
 
 
 def test_api_get_users():
