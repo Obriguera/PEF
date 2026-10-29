@@ -69,7 +69,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+**/docs/_build/
 
 # PyBuilder
 .pybuilder/
@@ -221,3 +221,7 @@ __marimo__/
 Ver-Optimizada.rar
 # Datasets generados por large_file_handler.py
 massive_ratings_*.csv
+
+# Reportes generados por tasks.py y por el CI
+Ver-Optimizada/reports/
+.benchmarks/

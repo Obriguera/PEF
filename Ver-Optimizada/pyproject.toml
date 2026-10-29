@@ -1,0 +1,62 @@
+# Configuración única de las herramientas de calidad de la Versión Optimizada.
+# Los comandos que las ejecutan están en tasks.py y son los mismos que corre el CI.
+
+[project]
+name = "pef-recommender"
+version = "3.0.0"
+description = "Motor de recomendación de películas por filtrado colaborativo (PEF · UBP)"
+requires-python = ">=3.11"
+authors = [{ name = "Octavio Briguera" }, { name = "Ricardo Lagoria" }]
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
+
+# -------------------------------------------------------------- coverage
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = ["tests/*", "docs/*", "benchmark.py", "tasks.py", ".venv/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false
+exclude_also = ["if __name__ == .__main__.:"]
+
+# ------------------------------------------------------------------ ruff
+[tool.ruff]
+line-length = 119
+target-version = "py311"
+extend-exclude = ["docs/_build"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle · F: pyflakes · I: orden de imports · B: bugbear
+# UP: sintaxis moderna · SIM: simplificaciones · C90: complejidad de McCabe
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+# ------------------------------------------------------------------ mypy
+[tool.mypy]
+python_version = "3.11"
+files = ["recommender_core.py", "analysis_utils.py", "large_file_handler.py", "main.py"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+# El núcleo del sistema exige funciones completamente anotadas.
+[[tool.mypy.overrides]]
+module = ["recommender_core", "analysis_utils", "large_file_handler"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+# ---------------------------------------------------------------- bandit
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "docs"]

@@ -215,10 +215,20 @@ Requisitos: **Python 3.11 o superior**. Todos los comandos se ejecutan dentro de
 cd Ver-Optimizada
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install --require-hashes -r requirements-dev.txt
 ```
 
 En Linux o macOS, activar el entorno con `source .venv/bin/activate`.
+
+Las dependencias están **fijadas con versión exacta y hash** para que la instalación sea reproducible:
+
+| Archivo | Contenido |
+|---|---|
+| `requirements.in` | Dependencias directas de la API (se edita a mano) |
+| `requirements-dev.in` | Herramientas de tests, calidad, seguridad, rendimiento y documentación |
+| `requirements.txt` / `requirements-dev.txt` | *Locks* generados con `python tasks.py lock` (no se editan a mano) |
+
+Para producción alcanza con `pip install --require-hashes -r requirements.txt`.
 
 ### 7.2 Levantar la API y la web
 
@@ -250,13 +260,21 @@ Genera `massive_ratings_sample.csv` (500.000 filas), lo procesa y compara la mem
 
 ### 7.5 Tests, calidad y documentación
 
+Todos los controles se ejecutan con `tasks.py`, el mismo runner que usa el CI. La configuración de las herramientas está en `pyproject.toml`.
+
 ```powershell
-pytest -v                                           # Tests
-flake8 --max-line-length=119 --exclude=.venv,docs .  # PEP 8
-radon cc -s -a .                                    # Complejidad ciclomática
-radon mi -s .                                       # Índice de mantenibilidad
-cd docs; sphinx-build -b html . _build/html         # Regenerar la documentación
+python tasks.py --list     # Tareas disponibles
+python tasks.py lint       # Ruff: estilo y errores potenciales
+python tasks.py typecheck  # mypy
+python tasks.py complexity # Radon + Xenon (umbral: rango A)
+python tasks.py sast       # Bandit (reporte SARIF en reports/)
+python tasks.py test       # pytest + cobertura (umbral: 80 %)
+python tasks.py audit      # pip-audit sobre los locks
+python tasks.py docs-sphinx  # Genera docs/_build/html
+python tasks.py ci         # Todo lo anterior, en el orden del CI
 ```
+
+Los reportes quedan en `Ver-Optimizada/reports/` y la documentación generada no se versiona.
 
 ## 8. API REST
 
