@@ -51,3 +51,21 @@ def test_api_add_rating():
     assert response.status_code == 200
     data = response.json()
     assert "Valoración agregada" in data["mensaje"]
+
+
+def test_api_procesa_archivo_grande(tmp_path, monkeypatch):
+    # El endpoint escribe en el directorio actual: se aísla en tmp_path
+    monkeypatch.chdir(tmp_path)
+    response = client.get("/api/large-files/process", params={"records": 1000})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["records_processed"] == 1000
+    assert 0 < data["movies_aggregated"] <= 1000
+    assert (tmp_path / data["source_file"]).exists()
+    assert (tmp_path / data["output_file"]).exists()
+
+    # Segunda llamada: reutiliza el archivo existente en lugar de generarlo de nuevo
+    generado = (tmp_path / data["source_file"]).stat().st_mtime_ns
+    assert client.get("/api/large-files/process", params={"records": 1000}).status_code == 200
+    assert (tmp_path / data["source_file"]).stat().st_mtime_ns == generado

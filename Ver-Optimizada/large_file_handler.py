@@ -174,7 +174,7 @@ def write_aggregated_results_buffered(
     return output_filepath
 
 
-def run_point_3_demonstration(output_dir: str = ".") -> tuple[float, float]:
+def run_point_3_demonstration(output_dir: str = ".", num_records: int = 500000) -> tuple[float, float]:
     """Demostración comparativa para la defensa del Parcial:
 
     Compara:
@@ -187,8 +187,8 @@ def run_point_3_demonstration(output_dir: str = ".") -> tuple[float, float]:
     test_csv = os.path.join(output_dir, "massive_ratings_sample.csv")
     result_csv = os.path.join(output_dir, "massive_ratings_aggregated.csv")
 
-    # 1. Generar archivo grande (500.000 registros, ~16-20 MB en disco)
-    generate_large_ratings_csv(test_csv, num_records=500000, num_users=5000, num_movies=1000)
+    # 1. Generar archivo grande (por defecto 500.000 registros, ~16-20 MB en disco)
+    generate_large_ratings_csv(test_csv, num_records=num_records, num_users=5000, num_movies=1000)
 
     # --- PRUEBA 1: Enfoque Ingenuo (Cargar todo en RAM de un solo golpe) ---
     print("\n" + "=" * 60)
