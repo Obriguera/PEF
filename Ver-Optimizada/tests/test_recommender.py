@@ -1,11 +1,7 @@
 import numpy as np
 import pytest
-from recommender_core import (
-    prepare_data,
-    _cosine_similarity,
-    calculate_similarity,
-    recommend_movies
-)
+
+from recommender_core import _cosine_similarity, calculate_similarity, prepare_data, recommend_movies
 
 
 def test_prepare_data():

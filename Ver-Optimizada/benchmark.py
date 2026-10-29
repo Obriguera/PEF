@@ -1,24 +1,24 @@
 # benchmark.py
 import random
-from recommender_core import prepare_data, calculate_similarity, recommend_movies
+
 from analysis_utils import analyze_popularity
+from recommender_core import calculate_similarity, prepare_data, recommend_movies
 
 
 def generate_massive_data(num_users=2000, num_movies=500, ratings_per_user=30):
     """Genera un dataset sintético masivo en Python puro."""
-    movies_data = [{'movie_id': i, 'title': f'Pelicula_{i}', 'genre': 'Action', 'duration': 120}
-                   for i in range(1, num_movies + 1)]
+    movies_data = [
+        {"movie_id": i, "title": f"Pelicula_{i}", "genre": "Action", "duration": 120} for i in range(1, num_movies + 1)
+    ]
 
     ratings_data = []
     for user_id in range(1, num_users + 1):
         # Cada usuario califica un puñado de películas al azar
         watched = random.sample(range(1, num_movies + 1), ratings_per_user)
         for movie_id in watched:
-            ratings_data.append({
-                'user_id': user_id,
-                'movie_id': movie_id,
-                'rating': round(random.uniform(1.0, 5.0), 1)
-            })
+            ratings_data.append(
+                {"user_id": user_id, "movie_id": movie_id, "rating": round(random.uniform(1.0, 5.0), 1)}
+            )
 
     return movies_data, ratings_data
 

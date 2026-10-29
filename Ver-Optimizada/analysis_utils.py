@@ -14,18 +14,18 @@ def analyze_popularity(ratings_data, movies_data):
 
     movie_counts = {}
     for r in ratings_data:
-        m_id = r['movie_id']
+        m_id = r["movie_id"]
         movie_counts[m_id] = movie_counts.get(m_id, 0) + 1
 
     popularity_list = []
     # Usamos un dict para mapear títulos rápido O(1) en vez de iterar listas
-    movie_dict = {m['movie_id']: m['title'] for m in movies_data}
+    movie_dict = {m["movie_id"]: m["title"] for m in movies_data}
 
     for m_id, count in movie_counts.items():
         title = movie_dict.get(m_id, "Desconocida")
-        popularity_list.append({'title': title, 'count': count})
+        popularity_list.append({"title": title, "count": count})
 
-    popularity_list.sort(key=lambda x: x['count'], reverse=True)
+    popularity_list.sort(key=lambda x: x["count"], reverse=True)
     top_5 = popularity_list[:5]
 
     # GUARDAR EN CACHÉ: Almacenamos el resultado final antes de devolverlo
