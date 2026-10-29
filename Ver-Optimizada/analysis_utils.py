@@ -1,10 +1,13 @@
 # analysis_utils.py
+from collections.abc import Iterable
+
+from data_models import Movie, PopularMovie, Rating
 
 # Variable global para almacenar el resultado en memoria RAM
-_cache_popularidad = None
+_cache_popularidad: list[PopularMovie] | None = None
 
 
-def analyze_popularity(ratings_data, movies_data):
+def analyze_popularity(ratings_data: Iterable[Rating], movies_data: Iterable[Movie]) -> list[PopularMovie]:
     """Calcula la popularidad implementando Caching Inteligente."""
     global _cache_popularidad
 
@@ -12,12 +15,12 @@ def analyze_popularity(ratings_data, movies_data):
     if _cache_popularidad is not None:
         return _cache_popularidad
 
-    movie_counts = {}
+    movie_counts: dict[int, int] = {}
     for r in ratings_data:
         m_id = r["movie_id"]
         movie_counts[m_id] = movie_counts.get(m_id, 0) + 1
 
-    popularity_list = []
+    popularity_list: list[PopularMovie] = []
     # Usamos un dict para mapear títulos rápido O(1) en vez de iterar listas
     movie_dict = {m["movie_id"]: m["title"] for m in movies_data}
 
@@ -33,7 +36,7 @@ def analyze_popularity(ratings_data, movies_data):
     return top_5
 
 
-def invalidar_cache_popularidad():
+def invalidar_cache_popularidad() -> None:
     """Estrategia de invalidación: Se llama cuando cambia el historial de preferencias."""
     global _cache_popularidad
     _cache_popularidad = None

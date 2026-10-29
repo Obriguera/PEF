@@ -1,11 +1,20 @@
 import heapq
+from collections.abc import Iterable, Mapping
 
 import numpy as np
+import numpy.typing as npt
+
+from data_models import Movie, Rating
+
+# user_id -> {movie_id: rating}
+UtilityMatrix = dict[int, dict[int, float]]
+# (matriz de similitud usuarios x usuarios, user_id -> índice de fila/columna)
+UserSimilarities = tuple[npt.NDArray[np.float32], dict[int, int]]
 
 
-def prepare_data(ratings_data):
+def prepare_data(ratings_data: Iterable[Rating]) -> UtilityMatrix:
     """Matriz de utilidad."""
-    utility_matrix = {}
+    utility_matrix: UtilityMatrix = {}
     for r in ratings_data:
         u = r["user_id"]
         m = r["movie_id"]
@@ -16,7 +25,9 @@ def prepare_data(ratings_data):
     return utility_matrix
 
 
-def _cosine_similarity(vector_a, vector_b):
+def _cosine_similarity(
+    vector_a: Mapping[int, float] | npt.ArrayLike, vector_b: Mapping[int, float] | npt.ArrayLike
+) -> float:
     """Calcula la similitud coseno entre dos vectores usando NumPy.
 
     OPTIMIZACIÓN: Reemplaza las funciones nativas de Python (sum, bucles, <genexpr>)
@@ -28,11 +39,11 @@ def _cosine_similarity(vector_a, vector_b):
             return 0.0
         inter_a = np.array([vector_a[m] for m in intersection], dtype=np.float32)
         inter_b = np.array([vector_b[m] for m in intersection], dtype=np.float32)
-        norm_a = np.linalg.norm(np.array(list(vector_a.values()), dtype=np.float32))
-        norm_b = np.linalg.norm(np.array(list(vector_b.values()), dtype=np.float32))
-        if norm_a == 0.0 or norm_b == 0.0:
+        dict_norm_a = np.linalg.norm(np.array(list(vector_a.values()), dtype=np.float32))
+        dict_norm_b = np.linalg.norm(np.array(list(vector_b.values()), dtype=np.float32))
+        if dict_norm_a == 0.0 or dict_norm_b == 0.0:
             return 0.0
-        return float(np.dot(inter_a, inter_b) / (norm_a * norm_b))
+        return float(np.dot(inter_a, inter_b) / (dict_norm_a * dict_norm_b))
 
     v_a = np.asarray(vector_a, dtype=np.float32)
     v_b = np.asarray(vector_b, dtype=np.float32)
@@ -43,7 +54,7 @@ def _cosine_similarity(vector_a, vector_b):
     return float(np.dot(v_a, v_b) / (norm_a * norm_b))
 
 
-def calculate_similarity(utility_matrix):
+def calculate_similarity(utility_matrix: UtilityMatrix) -> UserSimilarities:
     """Cálculo de similitudes totalmente vectorizado con NumPy.
 
     OPTIMIZACIÓN ALGORÍTMICA Y DE RENDIMIENTO:
@@ -96,7 +107,13 @@ def calculate_similarity(utility_matrix):
     return similarity_matrix, user_index
 
 
-def recommend_movies(user_id, utility_matrix, user_similarities, movies_data, top_n=5):
+def recommend_movies(
+    user_id: int,
+    utility_matrix: UtilityMatrix,
+    user_similarities: UserSimilarities,
+    movies_data: Iterable[Movie],
+    top_n: int = 5,
+) -> list[str]:
     # Desempaquetamos la tupla devuelta por calculate_similarity
     similarity_matrix, user_index = user_similarities
 
@@ -112,7 +129,7 @@ def recommend_movies(user_id, utility_matrix, user_similarities, movies_data, to
     user_idx = user_index[user_id]
     sim_row = similarity_matrix[user_idx]  # O(1), sin copia de datos
 
-    predictions = []
+    predictions: list[tuple[float, int]] = []
 
     for movie in unwatched_movies:
         numerator = 0.0

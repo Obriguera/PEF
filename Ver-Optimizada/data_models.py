@@ -1,4 +1,32 @@
-MOVIES_DATA = [
+"""Datos de ejemplo del sistema y tipos que describen su estructura."""
+
+from typing import NotRequired, TypedDict
+
+
+class Movie(TypedDict):
+    movie_id: int
+    title: str
+    genre: NotRequired[str]
+    duration: NotRequired[int]
+
+
+class User(TypedDict):
+    user_id: int
+    name: str
+
+
+class Rating(TypedDict):
+    user_id: int
+    movie_id: int
+    rating: float
+
+
+class PopularMovie(TypedDict):
+    title: str
+    count: int
+
+
+MOVIES_DATA: list[Movie] = [
     {"movie_id": 1, "title": "Joker 2", "genre": "Musical", "duration": 120},
     {"movie_id": 2, "title": "Interstellar", "genre": "Science Fiction", "duration": 169},
     {"movie_id": 3, "title": "The Godfather", "genre": "Crime|Drama", "duration": 175},
@@ -21,7 +49,7 @@ MOVIES_DATA = [
     {"movie_id": 20, "title": "La La Land", "genre": "Musical|Romance|Drama", "duration": 128},
 ]
 
-USERS_DATA = [
+USERS_DATA: list[User] = [
     {"user_id": 101, "name": "Ana"},
     {"user_id": 102, "name": "Beto"},
     {"user_id": 103, "name": "Carlos"},
@@ -34,7 +62,7 @@ USERS_DATA = [
     {"user_id": 110, "name": "Jack"},
 ]
 
-RATINGS_DATA = [
+RATINGS_DATA: list[Rating] = [
     # Ana's ratings (likes musicals, sci-fi, and family movies)
     {"user_id": 101, "movie_id": 1, "rating": 5.0},
     {"user_id": 101, "movie_id": 2, "rating": 4.0},

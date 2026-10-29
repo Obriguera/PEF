@@ -50,6 +50,8 @@ files = ["recommender_core.py", "analysis_utils.py", "large_file_handler.py", "m
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true
+# Revisa también el cuerpo de las funciones sin anotar (los endpoints de main.py).
+check_untyped_defs = true
 
 # El núcleo del sistema exige funciones completamente anotadas.
 [[tool.mypy.overrides]]
