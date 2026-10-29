@@ -10,9 +10,10 @@ import csv
 import os
 import random
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Iterable, Iterator
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Any
+
+from data_models import Rating
 
 DEFAULT_BUFFER_SIZE = 64 * 1024  # 64 KB de buffer de E/S
 DEFAULT_BATCH_SIZE = 25000  # 25.000 registros por lote
@@ -68,7 +69,7 @@ def generate_large_ratings_csv(
 
 def stream_ratings_in_batches(
     filepath: str, batch_size: int = DEFAULT_BATCH_SIZE, buffer_size: int = DEFAULT_BUFFER_SIZE
-) -> Generator[list[dict[str, Any]], None, None]:
+) -> Generator[list[Rating], None, None]:
     """Generador que lee un archivo grande por bloques (batches) utilizando un buffer I/O.
 
     Ventaja de Memoria:
@@ -81,23 +82,29 @@ def stream_ratings_in_batches(
     with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
         reader = csv.reader(f)
         next(reader, None)  # Saltar encabezado
+        yield from _in_batches(_parse_ratings(reader), batch_size)
 
-        current_batch: list[dict[str, Any]] = []
-        for row in reader:
-            if not row or len(row) < 3:
-                continue
 
-            current_batch.append({"user_id": int(row[0]), "movie_id": int(row[1]), "rating": float(row[2])})
+def _parse_ratings(rows: Iterable[list[str]]) -> Iterator[Rating]:
+    """Convierte las filas del CSV en ratings, omitiendo las vacías o con menos de 3 columnas."""
+    for row in rows:
+        if row and len(row) >= 3:
+            yield {"user_id": int(row[0]), "movie_id": int(row[1]), "rating": float(row[2])}
 
-            if len(current_batch) >= batch_size:
-                yield current_batch
-                current_batch = []
 
-        if current_batch:
+def _in_batches(ratings: Iterable[Rating], batch_size: int) -> Iterator[list[Rating]]:
+    """Agrupa los ratings en listas de ``batch_size`` elementos (la última puede ser menor)."""
+    current_batch: list[Rating] = []
+    for rating in ratings:
+        current_batch.append(rating)
+        if len(current_batch) >= batch_size:
             yield current_batch
+            current_batch = []
+    if current_batch:
+        yield current_batch
 
 
-def _process_chunk_worker(chunk: list[dict[str, Any]]) -> dict[int, dict[str, float]]:
+def _process_chunk_worker(chunk: list[Rating]) -> dict[int, dict[str, float]]:
     """Función de trabajo para procesamiento en paralelo.
 
     Calcula agregaciones parciales (suma de calificaciones y conteo) por película
@@ -192,7 +199,7 @@ def run_point_3_demonstration(output_dir: str = ".") -> tuple[float, float]:
 
     with open(test_csv, encoding="utf-8") as f:
         raw_lines = f.readlines()  # Carga todo el texto en memoria
-        naive_data = []
+        naive_data: list[Rating] = []
         for line in raw_lines[1:]:
             parts = line.strip().split(",")
             naive_data.append({"user_id": int(parts[0]), "movie_id": int(parts[1]), "rating": float(parts[2])})
