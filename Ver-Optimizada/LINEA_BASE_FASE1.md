@@ -63,3 +63,40 @@ e `invalidar_cache_popularidad` en `analysis_utils.py`.
    tocar cada una, se agregan tests de caracterización para fijar su comportamiento.
 4. **Cobertura ≥ 80 %**: tests para el endpoint de archivo grande, el procesamiento
    paralelo, las filas inválidas y los caminos de norma cero.
+
+## Resultado de la Fase 1
+
+Medición final sobre el commit `dc9a68e`. El detalle está en
+[`metrics/parcial3-fase1.json`](metrics/parcial3-fase1.json).
+
+| Control | Línea base | Fase 1 |
+|---|---|---|
+| Xenon A | ❌ 4 funciones y 1 módulo en B | ✅ todo en A, CC máxima 5 |
+| CC promedio | 3,78 | 2,66 |
+| Cobertura | 70,67 % (11 tests) | 100 % (24 tests) |
+| mypy | 6 errores | 0 (también con `--strict` en el núcleo) |
+| Ruff | 33 hallazgos | 0 |
+| MI de `recommender_core` | 64,29 | 67,59 |
+| `recommend_movies` (benchmark) | 447 ms | 198 ms (2,2×) |
+| `python tasks.py ci` | ❌ | ✅ |
+
+Notas para leer la tabla:
+
+- **El comportamiento no cambió.** Los tests de caracterización comparan por igualdad exacta
+  contra un golden master generado con el código del tag `parcial3-fase0`. Una prueba
+  diferencial con 400 usuarios dio matriz, índice y rankings idénticos.
+- **La mejora de rendimiento vino del refactor.** La primera versión, con un generador por
+  película, quedaba un 13 % más lenta. Un índice invertido película → vecinos la dejó en 2,2×
+  más rápida, con el mismo orden de sumas.
+- **Se eliminó código muerto.** `_cosine_similarity` y sus auxiliares no tenían uso en
+  producción: `calculate_similarity` está vectorizada desde el Parcial 2.
+- **El 100 % de cobertura corresponde a un código chico** (293 sentencias). Vale más que los
+  tests fijan comportamiento (golden master, casos borde, consistencia paralelo/secuencial) y no
+  solo ejecutan líneas.
+- **Corrección:** el mensaje del commit `95b0a9c` dice que el MI de `recommender_core` era 60,6.
+  Ese valor se midió antes del ajuste final; el real era 61,75, y tras eliminar el código muerto
+  quedó en 67,59.
+
+Pendiente para la Fase 2: el `ProcessPoolExecutor` hace `fork()` desde un proceso multihilo
+cuando lo llama el endpoint (pasar a `spawn`), y `records_processed` informa los registros
+pedidos y no los procesados cuando el CSV ya existía.
