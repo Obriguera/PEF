@@ -1,0 +1,47 @@
+{
+  "version": "parcial3-fase0",
+  "commit": "eb8caa1",
+  "fecha": "2026-10-29",
+  "entorno": {"python": "3.13.17", "deps": "requirements-dev.txt (hashes verificados)"},
+  "complejidad": {
+    "cc_promedio": 3.78,
+    "cc_rango_promedio": "A",
+    "bloques_analizados": 18,
+    "bloques_peor_que_A": {
+      "recommender_core._cosine_similarity": 10,
+      "recommender_core.recommend_movies": 9,
+      "recommender_core.calculate_similarity": 8,
+      "large_file_handler.stream_ratings_in_batches": 7
+    },
+    "modulos_peor_que_A": ["recommender_core"],
+    "mi": {
+      "recommender_core": 64.29,
+      "analysis_utils": 88.72,
+      "large_file_handler": 54.13,
+      "main": 80.04,
+      "data_models": 100.0
+    }
+  },
+  "cobertura": {
+    "total": 70.67,
+    "umbral": 80,
+    "tests": 11,
+    "por_modulo": {
+      "analysis_utils": 100,
+      "data_models": 100,
+      "large_file_handler": 58,
+      "main": 74,
+      "recommender_core": 81
+    }
+  },
+  "mypy": {"errores": 6, "archivos_con_errores": ["analysis_utils.py", "recommender_core.py"]},
+  "ruff": {
+    "errores": 33,
+    "por_regla": {"UP006": 17, "I001": 8, "UP035": 4, "UP015": 2, "SIM118": 1, "B007": 1},
+    "archivos_sin_formato": 9
+  },
+  "bandit": {"alta": 0, "media": 0, "baja": 3, "detalle_baja": "B311 random en generate_large_ratings_csv (datos sintéticos)"},
+  "pip_audit": {"vulnerabilidades": 0},
+  "sphinx_W": "ok",
+  "loc": {"sloc_nucleo": 452, "comentarios": 56}
+}
