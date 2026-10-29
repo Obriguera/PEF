@@ -1,11 +1,20 @@
 import heapq
+from collections.abc import Iterable
 
 import numpy as np
+import numpy.typing as npt
+
+from data_models import Movie, Rating
+
+# user_id -> {movie_id: rating}
+UtilityMatrix = dict[int, dict[int, float]]
+# (matriz de similitud usuarios x usuarios, user_id -> índice de fila/columna)
+UserSimilarities = tuple[npt.NDArray[np.float32], dict[int, int]]
 
 
-def prepare_data(ratings_data):
+def prepare_data(ratings_data: Iterable[Rating]) -> UtilityMatrix:
     """Matriz de utilidad."""
-    utility_matrix = {}
+    utility_matrix: UtilityMatrix = {}
     for r in ratings_data:
         u = r["user_id"]
         m = r["movie_id"]
@@ -16,34 +25,7 @@ def prepare_data(ratings_data):
     return utility_matrix
 
 
-def _cosine_similarity(vector_a, vector_b):
-    """Calcula la similitud coseno entre dos vectores usando NumPy.
-
-    OPTIMIZACIÓN: Reemplaza las funciones nativas de Python (sum, bucles, <genexpr>)
-    por álgebra lineal vectorizada en C/C++ usando numpy.dot y numpy.linalg.norm.
-    """
-    if isinstance(vector_a, dict) and isinstance(vector_b, dict):
-        intersection = list(set(vector_a.keys()) & set(vector_b.keys()))
-        if not intersection:
-            return 0.0
-        inter_a = np.array([vector_a[m] for m in intersection], dtype=np.float32)
-        inter_b = np.array([vector_b[m] for m in intersection], dtype=np.float32)
-        norm_a = np.linalg.norm(np.array(list(vector_a.values()), dtype=np.float32))
-        norm_b = np.linalg.norm(np.array(list(vector_b.values()), dtype=np.float32))
-        if norm_a == 0.0 or norm_b == 0.0:
-            return 0.0
-        return float(np.dot(inter_a, inter_b) / (norm_a * norm_b))
-
-    v_a = np.asarray(vector_a, dtype=np.float32)
-    v_b = np.asarray(vector_b, dtype=np.float32)
-    norm_a = np.linalg.norm(v_a)
-    norm_b = np.linalg.norm(v_b)
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return float(np.dot(v_a, v_b) / (norm_a * norm_b))
-
-
-def calculate_similarity(utility_matrix):
+def calculate_similarity(utility_matrix: UtilityMatrix) -> UserSimilarities:
     """Cálculo de similitudes totalmente vectorizado con NumPy.
 
     OPTIMIZACIÓN ALGORÍTMICA Y DE RENDIMIENTO:
@@ -56,33 +38,42 @@ def calculate_similarity(utility_matrix):
         tuple: (similarity_matrix np.ndarray[float32], user_index dict)
                user_index mapea user_id -> índice de fila/columna en la matriz.
     """
-    users = list(utility_matrix.keys())
-    n_users = len(users)
-    user_index = {user: i for i, user in enumerate(users)}
+    user_index = {user: i for i, user in enumerate(utility_matrix)}
+    ratings_matrix = _build_ratings_matrix(utility_matrix, user_index, _index_movies(utility_matrix))
+    return _cosine_matrix(ratings_matrix), user_index
 
-    # Extraer el universo de películas únicas
+
+def _index_movies(utility_matrix: UtilityMatrix) -> dict[int, int]:
+    """Asigna a cada película calificada una columna de la matriz de ratings."""
     all_movies = list({m for ratings in utility_matrix.values() for m in ratings})
-    movie_index = {m: i for i, m in enumerate(all_movies)}
-    n_movies = len(all_movies)
+    return {m: i for i, m in enumerate(all_movies)}
 
-    # Matriz densa de ratings (usuarios x películas) en float32
-    R = np.zeros((n_users, n_movies), dtype=np.float32)
+
+def _build_ratings_matrix(
+    utility_matrix: UtilityMatrix, user_index: dict[int, int], movie_index: dict[int, int]
+) -> npt.NDArray[np.float32]:
+    """Matriz densa de ratings (usuarios x películas) en float32."""
+    ratings_matrix = np.zeros((len(user_index), len(movie_index)), dtype=np.float32)
     for user, ratings in utility_matrix.items():
         u_idx = user_index[user]
         for m, r in ratings.items():
-            R[u_idx, movie_index[m]] = r
+            ratings_matrix[u_idx, movie_index[m]] = r
+    return ratings_matrix
 
+
+def _cosine_matrix(ratings_matrix: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    """Similitud coseno entre todas las filas, con la diagonal y los usuarios sin ratings en 0.0."""
     # Cálculo vectorizado de normas L2 por fila con numpy.linalg.norm
-    norms = np.linalg.norm(R, axis=1, keepdims=True)  # (n_users, 1)
+    norms = np.linalg.norm(ratings_matrix, axis=1, keepdims=True)  # (n_users, 1)
 
     # Evitar división por cero
     norms_safe = np.where(norms == 0, 1.0, norms)
 
     # Producto punto matricial con numpy.dot (ejecutado en C/BLAS)
-    dot_products = np.dot(R, R.T)
+    dot_products = np.dot(ratings_matrix, ratings_matrix.T)
     denom = np.dot(norms_safe, norms_safe.T)
 
-    similarity_matrix = np.divide(dot_products, denom, dtype=np.float32)
+    similarity_matrix: npt.NDArray[np.float32] = np.divide(dot_products, denom, dtype=np.float32)
 
     # Anular filas/columnas de usuarios sin calificaciones (norma 0)
     zero_mask = (norms == 0).squeeze()
@@ -92,11 +83,24 @@ def calculate_similarity(utility_matrix):
 
     # La similitud de un usuario consigo mismo se define como 0.0
     np.fill_diagonal(similarity_matrix, 0.0)
+    return similarity_matrix
 
-    return similarity_matrix, user_index
 
+def recommend_movies(
+    user_id: int,
+    utility_matrix: UtilityMatrix,
+    user_similarities: UserSimilarities,
+    movies_data: Iterable[Movie],
+    top_n: int = 5,
+) -> list[str]:
+    """Recomienda las ``top_n`` películas no vistas con mayor rating predicho.
 
-def recommend_movies(user_id, utility_matrix, user_similarities, movies_data, top_n=5):
+    El rating predicho es el promedio de los ratings de los demás usuarios, ponderado por su
+    similitud (positiva) con el usuario objetivo.
+
+    Raises:
+        KeyError: si ``user_id`` no está en la matriz de similitud.
+    """
     # Desempaquetamos la tupla devuelta por calculate_similarity
     similarity_matrix, user_index = user_similarities
 
@@ -109,33 +113,54 @@ def recommend_movies(user_id, utility_matrix, user_similarities, movies_data, to
     unwatched_movies = set(movie_dict.keys()) - set(target_ratings.keys())
 
     # Vista zero-copy de la fila de similitudes del usuario objetivo
-    user_idx = user_index[user_id]
-    sim_row = similarity_matrix[user_idx]  # O(1), sin copia de datos
+    sim_row = similarity_matrix[user_index[user_id]]  # O(1), sin copia de datos
 
-    predictions = []
-
-    for movie in unwatched_movies:
-        numerator = 0.0
-        denominator = 0.0
-
-        for other_user, ratings in utility_matrix.items():
-            if other_user != user_id and movie in ratings:
-                # Acceso directo al array: más rápido que dict.get()
-                sim = float(sim_row[user_index[other_user]])
-                if sim > 0:
-                    numerator += sim * ratings[movie]
-                    denominator += sim
-
-        if denominator > 0:
-            predicted_rating = numerator / denominator
-            # Guardamos como tupla (rating, id) para que el heap sepa cómo ordenar
-            predictions.append((predicted_rating, movie))
+    neighbors = _Neighbors(user_id, utility_matrix, sim_row, user_index)
+    predictions = [(rating, movie) for movie in unwatched_movies if (rating := neighbors.predict(movie)) is not None]
 
     # OPTIMIZACIÓN: Uso de Heap para mantener el Top N.
     # Evitamos ordenar toda la lista O(N log N) y pasamos a O(N log K)
     top_predictions = heapq.nlargest(top_n, predictions)
 
     # Mapeo rápido O(1) gracias al diccionario
-    final_recommendations = [movie_dict[p[1]] for p in top_predictions]
+    return [movie_dict[movie] for _, movie in top_predictions]
 
-    return final_recommendations
+
+class _Neighbors:
+    """Los demás usuarios vistos desde el usuario objetivo, indexados por película.
+
+    ``raters`` es un índice invertido ``movie_id -> [(índice del vecino, rating)]``: cada predicción
+    recorre solo a quienes calificaron la película, en lugar de a todos los usuarios. Se construye
+    recorriendo ``utility_matrix`` en su orden, así que las sumas se acumulan en el mismo orden.
+    """
+
+    def __init__(
+        self,
+        user_id: int,
+        utility_matrix: UtilityMatrix,
+        sim_row: npt.NDArray[np.float32],
+        user_index: dict[int, int],
+    ) -> None:
+        self.sim_row = sim_row
+        self.raters: dict[int, list[tuple[int, float]]] = {}
+        for other_user, ratings in utility_matrix.items():
+            if other_user == user_id:
+                continue
+            other_idx = user_index[other_user]
+            for movie, rating in ratings.items():
+                self.raters.setdefault(movie, []).append((other_idx, rating))
+
+    def predict(self, movie: int) -> float | None:
+        """Promedio de ratings ponderado por similitud; ``None`` si ningún vecino similar la calificó."""
+        numerator = 0.0
+        denominator = 0.0
+        # Suma explícita en el orden original: sum() usa suma compensada desde Python 3.12
+        for other_idx, rating in self.raters.get(movie, ()):
+            # Acceso directo al array: más rápido que dict.get()
+            sim = float(self.sim_row[other_idx])
+            if sim > 0:
+                numerator += sim * rating
+                denominator += sim
+        if denominator > 0:
+            return numerator / denominator
+        return None

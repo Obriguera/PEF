@@ -17,5 +17,8 @@ Otros documentos de esta carpeta:
 
 - [PARCIAL_2_REPORTE_FINAL.md](PARCIAL_2_REPORTE_FINAL.md): resumen del Parcial 2 para la defensa.
 - [quality_report.md](quality_report.md): reporte de Flake8 y Radon.
+- [LINEA_BASE_FASE1.md](LINEA_BASE_FASE1.md): métricas de calidad antes y después de la Fase 1 del Parcial 3.
+- [`metrics/`](metrics/): las mismas métricas en JSON, una por versión, para los gráficos de evolución.
+- [PLAN_PARCIAL_3.md](../PLAN_PARCIAL_3.md): requerimientos y plan del Parcial 3.
 - `docs/_build/html/index.html`: documentación generada con Sphinx (`python tasks.py docs-sphinx`).
 - `pyproject.toml` y `tasks.py`: configuración y comandos de los controles de calidad (los mismos que corre el CI).
