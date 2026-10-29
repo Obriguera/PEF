@@ -106,18 +106,49 @@ def complexity() -> None:
 @task("Bandit: patrones de código inseguro (reporte legible + SARIF)")
 def sast() -> None:
     REPORTS.mkdir(exist_ok=True)
-    run(PY, "-m", "bandit", "-c", "pyproject.toml", "-r", *SOURCES,
-        "-f", "sarif", "-o", str(REPORTS / "bandit.sarif"), "--exit-zero")
+    run(
+        PY,
+        "-m",
+        "bandit",
+        "-c",
+        "pyproject.toml",
+        "-r",
+        *SOURCES,
+        "-f",
+        "sarif",
+        "-o",
+        str(REPORTS / "bandit.sarif"),
+        "--exit-zero",
+    )
     # Rechazo: severidad media o más con confianza media o más
-    run(PY, "-m", "bandit", "-c", "pyproject.toml", "-r", *SOURCES, "--severity-level", "medium",
-        "--confidence-level", "medium")
+    run(
+        PY,
+        "-m",
+        "bandit",
+        "-c",
+        "pyproject.toml",
+        "-r",
+        *SOURCES,
+        "--severity-level",
+        "medium",
+        "--confidence-level",
+        "medium",
+    )
 
 
 @task("Gitleaks: detección de secretos en el historial de git")
 def secrets() -> None:
     REPORTS.mkdir(exist_ok=True)
-    run(tool("gitleaks"), "git", "..", "--report-format", "sarif",
-        "--report-path", str(REPORTS / "gitleaks.sarif"), "--redact")
+    run(
+        tool("gitleaks"),
+        "git",
+        "..",
+        "--report-format",
+        "sarif",
+        "--report-path",
+        str(REPORTS / "gitleaks.sarif"),
+        "--redact",
+    )
 
 
 @task("Etapa de calidad estática completa")
@@ -134,9 +165,15 @@ def static() -> None:
 @task("pytest + cobertura con umbral mínimo (ver pyproject.toml)")
 def test() -> None:
     REPORTS.mkdir(exist_ok=True)
-    run(PY, "-m", "pytest", "--cov", "--cov-report=term-missing",
+    run(
+        PY,
+        "-m",
+        "pytest",
+        "--cov",
+        "--cov-report=term-missing",
         f"--cov-report=xml:{REPORTS / 'coverage.xml'}",
-        f"--junitxml={REPORTS / 'junit.xml'}")
+        f"--junitxml={REPORTS / 'junit.xml'}",
+    )
 
 
 # -------------------------------------------- dependencias y documentación
@@ -147,8 +184,20 @@ def audit() -> None:
     REPORTS.mkdir(exist_ok=True)
     for lockfile in ("requirements.txt", "requirements-dev.txt"):
         report = REPORTS / f"pip-audit-{Path(lockfile).stem}.json"
-        run(PY, "-m", "pip_audit", "--strict", "--require-hashes", "--disable-pip",
-            "-r", lockfile, "-f", "json", "-o", str(report))
+        run(
+            PY,
+            "-m",
+            "pip_audit",
+            "--strict",
+            "--require-hashes",
+            "--disable-pip",
+            "-r",
+            lockfile,
+            "-f",
+            "json",
+            "-o",
+            str(report),
+        )
 
 
 @task("Sphinx: genera la referencia de la API desde los docstrings (falla ante advertencias)")
