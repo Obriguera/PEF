@@ -1,0 +1,37 @@
+# Dependencias de desarrollo: tests, calidad, seguridad, rendimiento y documentación.
+# Incluye las de ejecución para que el lock de desarrollo sea consistente con el de producción.
+-c requirements.txt
+-r requirements.in
+
+# Pruebas y cobertura
+pytest
+pytest-cov
+pytest-benchmark
+httpx
+
+# Análisis estático, tipado y complejidad
+ruff
+mypy
+radon
+xenon
+
+# Seguridad
+bandit[sarif]
+pip-audit
+
+# Rendimiento y memoria
+scalene
+py-spy
+snakeviz
+pyinstrument
+psutil
+types-psutil
+
+# Gráficos de evolución entre versiones
+matplotlib
+
+# Documentación (Sphinx se mantiene en paralelo con MkDocs)
+sphinx
+sphinx-rtd-theme
+mkdocs-material
+mkdocstrings[python]

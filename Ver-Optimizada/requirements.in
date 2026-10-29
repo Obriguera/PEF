@@ -1,0 +1,6 @@
+# Dependencias de ejecución de la API.
+# Fuente de verdad: editar este archivo y regenerar el lock con
+#   python tasks.py lock
+fastapi
+uvicorn
+numpy
