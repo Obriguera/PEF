@@ -1,10 +1,12 @@
 import os
+
 import pytest
+
 from large_file_handler import (
     generate_large_ratings_csv,
-    stream_ratings_in_batches,
     process_large_file_parallel,
-    write_aggregated_results_buffered
+    stream_ratings_in_batches,
+    write_aggregated_results_buffered,
 )
 
 

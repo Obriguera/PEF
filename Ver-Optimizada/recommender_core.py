@@ -1,4 +1,5 @@
 import heapq
+
 import numpy as np
 
 
@@ -6,9 +7,9 @@ def prepare_data(ratings_data):
     """Matriz de utilidad."""
     utility_matrix = {}
     for r in ratings_data:
-        u = r['user_id']
-        m = r['movie_id']
-        rating = r['rating']
+        u = r["user_id"]
+        m = r["movie_id"]
+        rating = r["rating"]
         if u not in utility_matrix:
             utility_matrix[u] = {}
         utility_matrix[u][m] = rating
@@ -60,7 +61,7 @@ def calculate_similarity(utility_matrix):
     user_index = {user: i for i, user in enumerate(users)}
 
     # Extraer el universo de películas únicas
-    all_movies = list({m for ratings in utility_matrix.values() for m in ratings.keys()})
+    all_movies = list({m for ratings in utility_matrix.values() for m in ratings})
     movie_index = {m: i for i, m in enumerate(all_movies)}
     n_movies = len(all_movies)
 
@@ -102,14 +103,14 @@ def recommend_movies(user_id, utility_matrix, user_similarities, movies_data, to
     target_ratings = utility_matrix.get(user_id, {})
 
     # OPTIMIZACIÓN: HashMap (diccionario) para búsqueda rápida O(1) de películas.
-    movie_dict = {m['movie_id']: m['title'] for m in movies_data}
+    movie_dict = {m["movie_id"]: m["title"] for m in movies_data}
 
     # OPTIMIZACIÓN: Set para encontrar películas no vistas
     unwatched_movies = set(movie_dict.keys()) - set(target_ratings.keys())
 
     # Vista zero-copy de la fila de similitudes del usuario objetivo
     user_idx = user_index[user_id]
-    sim_row = similarity_matrix[user_idx]   # O(1), sin copia de datos
+    sim_row = similarity_matrix[user_idx]  # O(1), sin copia de datos
 
     predictions = []
 

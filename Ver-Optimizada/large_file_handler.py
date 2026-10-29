@@ -8,15 +8,14 @@ Punto 3 del Parcial: Escritura y lectura de archivos grandes mediante:
 
 import csv
 import os
-import time
 import random
-
+import time
+from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Generator, List, Dict, Any, Tuple
-
+from typing import Any
 
 DEFAULT_BUFFER_SIZE = 64 * 1024  # 64 KB de buffer de E/S
-DEFAULT_BATCH_SIZE = 25000       # 25.000 registros por lote
+DEFAULT_BATCH_SIZE = 25000  # 25.000 registros por lote
 
 
 def generate_large_ratings_csv(
@@ -24,7 +23,7 @@ def generate_large_ratings_csv(
     num_records: int = 500000,
     num_users: int = 5000,
     num_movies: int = 1000,
-    buffer_size: int = DEFAULT_BUFFER_SIZE
+    buffer_size: int = DEFAULT_BUFFER_SIZE,
 ) -> str:
     """Genera un archivo CSV masivo de ratings simulando un dataset de producción.
 
@@ -45,7 +44,7 @@ def generate_large_ratings_csv(
         writer.writerow(["user_id", "movie_id", "rating", "timestamp"])
 
         current_ts = int(time.time())
-        for i in range(1, num_records + 1):
+        for _ in range(num_records):
             user_id = random.randint(1, num_users)
             movie_id = random.randint(1, num_movies)
             rating = round(random.uniform(1.0, 5.0), 1)
@@ -68,10 +67,8 @@ def generate_large_ratings_csv(
 
 
 def stream_ratings_in_batches(
-    filepath: str,
-    batch_size: int = DEFAULT_BATCH_SIZE,
-    buffer_size: int = DEFAULT_BUFFER_SIZE
-) -> Generator[List[Dict[str, Any]], None, None]:
+    filepath: str, batch_size: int = DEFAULT_BATCH_SIZE, buffer_size: int = DEFAULT_BUFFER_SIZE
+) -> Generator[list[dict[str, Any]], None, None]:
     """Generador que lee un archivo grande por bloques (batches) utilizando un buffer I/O.
 
     Ventaja de Memoria:
@@ -81,20 +78,16 @@ def stream_ratings_in_batches(
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"No se encontró el archivo {filepath}")
 
-    with open(filepath, mode="r", encoding="utf-8", buffering=buffer_size) as f:
+    with open(filepath, encoding="utf-8", buffering=buffer_size) as f:
         reader = csv.reader(f)
         next(reader, None)  # Saltar encabezado
 
-        current_batch: List[Dict[str, Any]] = []
+        current_batch: list[dict[str, Any]] = []
         for row in reader:
             if not row or len(row) < 3:
                 continue
 
-            current_batch.append({
-                "user_id": int(row[0]),
-                "movie_id": int(row[1]),
-                "rating": float(row[2])
-            })
+            current_batch.append({"user_id": int(row[0]), "movie_id": int(row[1]), "rating": float(row[2])})
 
             if len(current_batch) >= batch_size:
                 yield current_batch
@@ -104,13 +97,13 @@ def stream_ratings_in_batches(
             yield current_batch
 
 
-def _process_chunk_worker(chunk: List[Dict[str, Any]]) -> Dict[int, Dict[str, float]]:
+def _process_chunk_worker(chunk: list[dict[str, Any]]) -> dict[int, dict[str, float]]:
     """Función de trabajo para procesamiento en paralelo.
 
     Calcula agregaciones parciales (suma de calificaciones y conteo) por película
     para un lote de registros sin bloquear el proceso principal.
     """
-    stats: Dict[int, Dict[str, float]] = {}
+    stats: dict[int, dict[str, float]] = {}
     for r in chunk:
         movie_id = r["movie_id"]
         rating = r["rating"]
@@ -122,11 +115,8 @@ def _process_chunk_worker(chunk: List[Dict[str, Any]]) -> Dict[int, Dict[str, fl
 
 
 def process_large_file_parallel(
-    filepath: str,
-    batch_size: int = DEFAULT_BATCH_SIZE,
-    buffer_size: int = DEFAULT_BUFFER_SIZE,
-    max_workers: int = 4
-) -> Dict[int, Dict[str, float]]:
+    filepath: str, batch_size: int = DEFAULT_BATCH_SIZE, buffer_size: int = DEFAULT_BUFFER_SIZE, max_workers: int = 4
+) -> dict[int, dict[str, float]]:
     """Lee y procesa un archivo masivo combinando Buffering, Batching y Procesamiento Paralelo.
 
     Estrategia:
@@ -137,7 +127,7 @@ def process_large_file_parallel(
     print(f"\n[PROCESAMIENTO PARALELO] Procesando '{filepath}' con {max_workers} procesos...")
     t_start = time.perf_counter()
 
-    total_stats: Dict[int, Dict[str, float]] = {}
+    total_stats: dict[int, dict[str, float]] = {}
     total_records = 0
     futures = []
 
@@ -156,15 +146,15 @@ def process_large_file_parallel(
                 total_stats[movie_id]["count"] += data["count"]
 
     elapsed = time.perf_counter() - t_start
-    print(f"[PROCESAMIENTO PARALELO] {total_records:,} registros procesados en {elapsed:.2f}s "
-          f"({len(total_stats):,} películas calculadas).")
+    print(
+        f"[PROCESAMIENTO PARALELO] {total_records:,} registros procesados en {elapsed:.2f}s "
+        f"({len(total_stats):,} películas calculadas)."
+    )
     return total_stats
 
 
 def write_aggregated_results_buffered(
-    output_filepath: str,
-    aggregated_stats: Dict[int, Dict[str, float]],
-    buffer_size: int = DEFAULT_BUFFER_SIZE
+    output_filepath: str, aggregated_stats: dict[int, dict[str, float]], buffer_size: int = DEFAULT_BUFFER_SIZE
 ) -> str:
     """Escribe los resultados procesados a disco usando buffer y streaming."""
     with open(output_filepath, mode="w", newline="", encoding="utf-8", buffering=buffer_size) as f:
@@ -177,7 +167,7 @@ def write_aggregated_results_buffered(
     return output_filepath
 
 
-def run_point_3_demonstration(output_dir: str = ".") -> Tuple[float, float]:
+def run_point_3_demonstration(output_dir: str = ".") -> tuple[float, float]:
     """Demostración comparativa para la defensa del Parcial:
 
     Compara:
@@ -200,16 +190,12 @@ def run_point_3_demonstration(output_dir: str = ".") -> Tuple[float, float]:
     mem_before_naive = process.memory_info().rss / (1024 * 1024)
     t0_naive = time.perf_counter()
 
-    with open(test_csv, mode="r", encoding="utf-8") as f:
+    with open(test_csv, encoding="utf-8") as f:
         raw_lines = f.readlines()  # Carga todo el texto en memoria
         naive_data = []
         for line in raw_lines[1:]:
             parts = line.strip().split(",")
-            naive_data.append({
-                "user_id": int(parts[0]),
-                "movie_id": int(parts[1]),
-                "rating": float(parts[2])
-            })
+            naive_data.append({"user_id": int(parts[0]), "movie_id": int(parts[1]), "rating": float(parts[2])})
 
     naive_stats = _process_chunk_worker(naive_data)
     t_naive = time.perf_counter() - t0_naive
@@ -231,10 +217,7 @@ def run_point_3_demonstration(output_dir: str = ".") -> Tuple[float, float]:
     t0_opt = time.perf_counter()
 
     optimized_stats = process_large_file_parallel(
-        filepath=test_csv,
-        batch_size=25000,
-        buffer_size=DEFAULT_BUFFER_SIZE,
-        max_workers=4
+        filepath=test_csv, batch_size=25000, buffer_size=DEFAULT_BUFFER_SIZE, max_workers=4
     )
 
     write_aggregated_results_buffered(result_csv, optimized_stats)

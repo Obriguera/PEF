@@ -1,10 +1,11 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from data_models import USERS_DATA, MOVIES_DATA, RATINGS_DATA
-from recommender_core import prepare_data, calculate_similarity, recommend_movies
-from analysis_utils import analyze_popularity, invalidar_cache_popularidad
 from pydantic import BaseModel
+
+from analysis_utils import analyze_popularity, invalidar_cache_popularidad
+from data_models import MOVIES_DATA, RATINGS_DATA, USERS_DATA
+from recommender_core import calculate_similarity, prepare_data, recommend_movies
 
 app = FastAPI()
 
@@ -52,11 +53,9 @@ class NewRating(BaseModel):
 def add_new_rating(rating_data: NewRating):
     """Simula agregar una nueva valoración e invalida el caché."""
     # 1. Agregamos el dato a la lista cruda
-    RATINGS_DATA.append({
-        'user_id': rating_data.user_id,
-        'movie_id': rating_data.movie_id,
-        'rating': rating_data.rating
-    })
+    RATINGS_DATA.append(
+        {"user_id": rating_data.user_id, "movie_id": rating_data.movie_id, "rating": rating_data.rating}
+    )
 
     # 2. ESTRATEGIA DE INVALIDACIÓN: Como hay un dato nuevo, la popularidad cambió.
     invalidar_cache_popularidad()
@@ -70,10 +69,11 @@ def process_large_file_endpoint(records: int = 200000):
     Demuestra generación con buffer, streaming por lotes (batching) y paralelismo.
     """
     import os
+
     from large_file_handler import (
         generate_large_ratings_csv,
         process_large_file_parallel,
-        write_aggregated_results_buffered
+        write_aggregated_results_buffered,
     )
 
     filepath = "massive_ratings_sample.csv"
@@ -94,6 +94,6 @@ def process_large_file_endpoint(records: int = 200000):
         "techniques": [
             "Buffering (64 KB I/O)",
             "Batching (20.000 filas por chunk en memoria)",
-            "Procesamiento Paralelo (ProcessPoolExecutor)"
-        ]
+            "Procesamiento Paralelo (ProcessPoolExecutor)",
+        ],
     }
