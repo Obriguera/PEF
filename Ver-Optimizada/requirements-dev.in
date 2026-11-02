@@ -6,7 +6,8 @@
 # Pruebas y cobertura
 pytest
 pytest-cov
-pytest-benchmark
+# 5.3.0 usa node._nodeid, que pytest 9.2 eliminó: el fixture "benchmark" falla con AttributeError.
+pytest-benchmark>=5.3.1
 httpx
 
 # Análisis estático, tipado y complejidad

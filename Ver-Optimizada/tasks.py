@@ -176,6 +176,63 @@ def test() -> None:
     )
 
 
+# ------------------------------------------------------------ rendimiento
+
+# Las líneas base se guardan por plataforma y versión de Python (p. ej. Linux-CPython-3.13-64bit): en otra
+# combinación no hay con qué comparar y el control avisa en lugar de fallar.
+BENCH_STORAGE = ROOT / "metrics" / "benchmarks"
+# Se compara el mínimo y no la media: el ruido de una máquina compartida solo suma tiempo, así que el mínimo
+# es la estadística estable. Medido en 5 corridas, su peor desvío fue 15 % (la media llegó a 25 %).
+BENCH_MAX_REGRESSION = "min:25%"
+
+
+def bench_command() -> list[str]:
+    """Comando base de pytest-benchmark: solo los benchmarks, con las mediciones activadas."""
+    return [
+        PY,
+        "-m",
+        "pytest",
+        "tests/test_benchmarks.py",
+        "--benchmark-enable",
+        "--benchmark-only",
+        f"--benchmark-storage={BENCH_STORAGE}",
+        "--benchmark-columns=min,mean,median,stddev,rounds",
+    ]
+
+
+def has_baseline() -> bool:
+    """¿Hay una línea base guardada para esta plataforma y esta versión de Python?"""
+    from pytest_benchmark.utils import get_machine_id  # disponible después de `install`
+
+    return any((BENCH_STORAGE / get_machine_id()).glob("*.json"))
+
+
+@task("Benchmarks: falla si algo empeora más de 25 % (mínimo) respecto de la última línea base")
+def bench() -> None:
+    REPORTS.mkdir(exist_ok=True)
+    command = [*bench_command(), f"--benchmark-json={REPORTS / 'benchmark.json'}"]
+    if has_baseline():
+        run(*command, "--benchmark-compare", f"--benchmark-compare-fail={BENCH_MAX_REGRESSION}")
+    else:
+        # pytest-benchmark aborta con un error de uso si se pide --benchmark-compare-fail sin línea base
+        print(
+            "\n⚠ SIN LÍNEA BASE para esta plataforma: se mide, pero NO se compara. Crearla: python tasks.py bench-save"
+        )
+        run(*command)
+
+
+@task("Benchmarks: guarda una nueva línea base en metrics/benchmarks/ (tras una mejora o al cambiar de máquina)")
+def bench_save() -> None:
+    run(*bench_command(), "--benchmark-save=baseline")
+
+
+@task("Perfiles de cProfile y pyinstrument sobre benchmark.py; no bloquea, deja los reportes en reports/")
+def profile() -> None:
+    REPORTS.mkdir(exist_ok=True)
+    run(PY, "-m", "cProfile", "-o", str(REPORTS / "profile.prof"), "benchmark.py")
+    run(PY, "-m", "pyinstrument", "--renderer", "html", "--outfile", str(REPORTS / "profile.html"), "benchmark.py")
+
+
 # -------------------------------------------- dependencias y documentación
 
 
