@@ -1,13 +1,20 @@
 # main.py
-from fastapi import FastAPI
+from typing import Annotated
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from analysis_utils import analyze_popularity, invalidar_cache_popularidad
 from data_models import MOVIES_DATA, RATINGS_DATA, USERS_DATA
 from recommender_core import calculate_similarity, prepare_data, recommend_movies
 
 app = FastAPI()
+
+# Límites de entrada: sin ellos, un pedido anónimo podría agotar disco y CPU o falsear el ranking
+MAX_RECORDS = 1_000_000  # registros que el endpoint de archivos grandes acepta generar por pedido
+MIN_RATING = 1.0
+MAX_RATING = 5.0
 
 # Para permitir que tu web consulte esta API
 app.add_middleware(
@@ -31,6 +38,8 @@ def get_users():
 @app.get("/api/recommend/{user_id}")
 def get_recommendations(user_id: int):
     """Devuelve las recomendaciones en formato JSON."""
+    if user_id not in user_similarities[1]:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     recomendaciones = recommend_movies(user_id, utility_matrix, user_similarities, MOVIES_DATA, top_n=5)
     return {"user_id": user_id, "recommendations": recomendaciones}
 
@@ -44,9 +53,9 @@ def get_popularity():
 
 
 class NewRating(BaseModel):
-    user_id: int
-    movie_id: int
-    rating: float
+    user_id: int = Field(gt=0)
+    movie_id: int = Field(gt=0)
+    rating: float = Field(ge=MIN_RATING, le=MAX_RATING)
 
 
 @app.post("/api/rate")
@@ -64,7 +73,7 @@ def add_new_rating(rating_data: NewRating):
 
 
 @app.get("/api/large-files/process")
-def process_large_file_endpoint(records: int = 200000):
+def process_large_file_endpoint(records: Annotated[int, Query(ge=1, le=MAX_RECORDS)] = 200000):
     """Punto 3 del Parcial: Endpoint para procesamiento de archivos grandes.
     Demuestra generación con buffer, streaming por lotes (batching) y paralelismo.
     """

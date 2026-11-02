@@ -78,3 +78,30 @@ def test_api_informa_los_registros_realmente_procesados(tmp_path, monkeypatch):
     assert client.get("/api/large-files/process", params={"records": 1000}).json()["records_processed"] == 1000
     data = client.get("/api/large-files/process", params={"records": 5000}).json()
     assert data["records_processed"] == 1000
+
+
+def test_api_recomendacion_de_usuario_inexistente_es_404():
+    response = client.get("/api/recommend/999999")
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("rating", [0.0, 0.99, 5.01, -3.0, 1e308])
+def test_api_rate_rechaza_ratings_fuera_de_rango(rating):
+    cantidad = len(RATINGS_DATA)
+    response = client.post("/api/rate", json={"user_id": 101, "movie_id": 1, "rating": rating})
+    assert response.status_code == 422
+    assert len(RATINGS_DATA) == cantidad  # no se agregó nada
+
+
+@pytest.mark.parametrize("rating", [1.0, 3.5, 5.0])
+def test_api_rate_acepta_los_extremos_del_rango(rating):
+    response = client.post("/api/rate", json={"user_id": 101, "movie_id": 1, "rating": rating})
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("records", [0, -5, 1_000_001])
+def test_api_large_files_rechaza_cantidades_fuera_de_rango(tmp_path, monkeypatch, records):
+    monkeypatch.chdir(tmp_path)
+    response = client.get("/api/large-files/process", params={"records": records})
+    assert response.status_code == 422
+    assert list(tmp_path.iterdir()) == []  # no se generó ningún archivo

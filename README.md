@@ -324,10 +324,10 @@ Los reportes quedan en `Ver-Optimizada/reports/` y la documentación generada no
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/users` | Lista de usuarios (para el selector de la web) |
-| GET | `/api/recommend/{user_id}` | Top 5 de películas recomendadas para el usuario |
+| GET | `/api/recommend/{user_id}` | Top 5 de películas recomendadas para el usuario (404 si el usuario no existe) |
 | GET | `/api/popularity` | Top 5 de películas más calificadas (con caché) |
-| POST | `/api/rate` | Agrega una calificación (`user_id`, `movie_id`, `rating`) e invalida el caché |
-| GET | `/api/large-files/process?records=200000` | Demo del Punto 3: genera y procesa un CSV grande |
+| POST | `/api/rate` | Agrega una calificación (`user_id` y `movie_id` positivos, `rating` entre 1 y 5; 422 si no) e invalida el caché |
+| GET | `/api/large-files/process?records=200000` | Demo del Punto 3: genera y procesa un CSV grande (`records` entre 1 y 1.000.000; 422 si no) |
 
 ## 9. Limitaciones y próximos pasos
 
