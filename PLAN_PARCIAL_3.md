@@ -51,11 +51,30 @@ README, en la documentación y en las diapositivas.
 |---|---|---|
 | 0. Preparar el repo | Locks con hashes, `pyproject.toml`, `tasks.py`, `.gitignore` | ✅ PR #1, tag `parcial3-fase0` |
 | 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2, tag `parcial3-fase1` |
-| 2. Rendimiento y memoria | `benchmark.py` → pytest-benchmark con línea base, test de memoria con tracemalloc, job de profiling; además, `spawn` en el `ProcessPoolExecutor` y corregir `records_processed` en el endpoint | ⏳ |
+| 2. Rendimiento y memoria | Benchmarks con pytest-benchmark y línea base, tests de memoria con tracemalloc, tarea de profiling; `spawn` en el `ProcessPoolExecutor`, contrapresión y `records_processed` real | ✅ en PR (tag `parcial3-fase2` tras el merge) |
 | 3. Seguridad | Bandit, Gitleaks y pip-audit en el CI, Dependabot, CodeQL, `SECURITY.md` con la política y las excepciones | ⏳ (Bandit, Gitleaks y pip-audit ya están en `tasks.py`) |
-| 4. Pipeline | `.github/workflows/ci.yml` + protección de `master` (la configura el dueño del repo) | ⏳ |
+| 4. Pipeline | `.github/workflows/ci.yml` + protección de `master` (la configura el dueño del repo). El job de rendimiento tiene que generar la línea base **en el mismo runner** (`bench-save` sobre la rama base y después `bench` sobre el PR): la versionada en `metrics/benchmarks/` se midió en otra máquina | ⏳ |
 | 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
 | 6. Evolución entre versiones | `evolucion/medir.py` (subcomandos `medir`, `graficar`, `todo`), métricas en JSON, gráficos PNG para el README, MkDocs y las diapositivas | ⏳ |
+
+### Decisiones y hallazgos de la Fase 2
+
+- **Umbral de benchmarks: `min:25%`, no `mean:25%` como decía el plan.** En 5 corridas completas el peor
+  desvío entre corridas fue 25,4 % para la media (igual al umbral: falsos rojos), 48,8 % para la mediana
+  y 15,1 % para el mínimo. Contrapartida: una regresión menor al 25 % no se detecta. Validado: una
+  lentitud pura de +126,8 % hace fallar `bench` con exit 1; tres corridas sin cambios pasaron las tres.
+- **Los benchmarks no están en `ci`** (dependen de la máquina). Son `bench`, `bench-save` y `profile`.
+  Sin línea base para la plataforma, `bench` mide y avisa que no comparó.
+- **La memoria del procesamiento paralelo crecía con el archivo** (18 → 67 MB entre 100.000 y 400.000
+  filas), contra lo que documenta el Punto 3. El test falló antes del arreglo; con contrapresión
+  (`2 × max_workers` lotes en vuelo) queda plano en ~9,3 MB. Límites absolutos de `tests/test_memory.py`
+  con margen sobre lo medido: 2 MB (lectura), 5 MB (paralelo) y 3 MB (`calculate_similarity`, que atrapa
+  una regresión de float32 a float64).
+- **`spawn`** en lugar de `fork`: ~70–100 ms fijos de arranque. Cualquier script que llame a
+  `process_large_file_parallel` necesita el guard `if __name__ == "__main__"`.
+- **El lock tenía una combinación rota:** `pytest-benchmark 5.3.0` con `pytest 9.2` (falla con
+  `AttributeError: _nodeid`). Se exige `pytest-benchmark>=5.3.1`, publicada el 2026-11-01 (un día antes de
+  adoptarla). Alternativa más conservadora si se prefiere esperar: `pytest<9.2`.
 
 ### Pipeline previsto (Fase 4)
 
@@ -124,6 +143,8 @@ Todo el estado del trabajo está en el repo. Para seguir:
   con un fixture; cualquier test nuevo de la API tiene que mantener ese aislamiento.
 - **coverage no mide los subprocesos del `ProcessPoolExecutor`.** El worker se testea llamándolo
   en forma directa.
+- **`bench` compara contra una línea base por plataforma y versión de Python** (`metrics/benchmarks/`). Los
+  tiempos absolutos de otra máquina no son comparables; regenerarla con `bench-save` al cambiar de equipo.
 - **Los tests de rendimiento deben medir contra el tag de la versión anterior**, con el mínimo de
   varias repeticiones. La Fase 1 midió `recommend_movies` en 447 ms → 198 ms con 400 usuarios ×
   300 películas y 20.000 ratings.

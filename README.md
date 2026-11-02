@@ -62,8 +62,11 @@ PEF/
 │   ├── main.py                 # API REST (FastAPI)
 │   ├── data_models.py          # Dataset de demostración en memoria
 │   ├── benchmark.py            # Benchmark sintético (2.000 usuarios, 500 películas)
+│   ├── tasks.py                # Runner de controles: lint, tipos, tests, seguridad y benchmarks
+│   ├── pyproject.toml          # Configuración de pytest, coverage, Ruff, mypy y Bandit
+│   ├── metrics/                # Métricas por fase (JSON) y líneas base de los benchmarks
 │   ├── index.html              # Interfaz web que consume la API
-│   ├── tests/                  # Suite de pytest (11 tests)
+│   ├── tests/                  # Suite de pytest (35 tests: unitarios, golden master, memoria y benchmarks)
 │   ├── docs/                   # Documentación Sphinx (fuentes y HTML generado)
 │   ├── scalene-profile.*       # Perfil de Scalene
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
@@ -139,6 +142,12 @@ Se procesa un CSV de 500.000 calificaciones.
 
 Resultado: el enfoque ingenuo con `readlines()` aumenta la RAM en 173,5 MB; el optimizado, en 23,8 MB (**−86 %**). También se expone como endpoint: `GET /api/large-files/process`.
 
+**Parcial 3:**
+
+- **Contrapresión.** Medir con `tracemalloc` mostró que la lectura en lotes mantenía la memoria constante, pero el procesamiento paralelo enviaba *todos* los lotes al pool antes de consumir resultados, y el pico del proceso principal crecía con el archivo (de 18 a 67 MB entre 100.000 y 400.000 filas, con lotes de 5.000). Ahora hay como máximo `2 × max_workers` lotes en vuelo y el pico queda plano en ~9,3 MB (`tests/test_memory.py`).
+- **`spawn` en lugar de `fork`.** Crear procesos con `fork()` desde un proceso con hilos (el pool de FastAPI) puede dejarlos trabados, y Python 3.14 ya no lo usa por defecto en Linux. Cuesta ~70–100 ms fijos de arranque.
+- Re-medición de la demo con estos cambios: +26–28 MB contra +174 MB del método ingenuo (−84 %). La cifra de arriba es la original del Parcial 2.
+
 ### Punto 4 · Legibilidad y mantenibilidad (PEP 8)
 
 - **Flake8:** 0 errores y 0 advertencias.
@@ -160,6 +169,8 @@ Elegimos Radon en lugar de SonarQube porque es liviano, no necesita servidor y m
 
 El detalle está en `Ver-Optimizada/quality_report.md`.
 
+> **Actualización del Parcial 3.** Estas cifras son las del Parcial 2. Después del refactor de la Fase 1, **todas las funciones están en rango A** (complejidad máxima 5, promedio 2,67), `_cosine_similarity` se eliminó por no tener uso en producción, y el análisis se hace con Ruff (en lugar de Flake8) y Xenon. Ver [`Ver-Optimizada/LINEA_BASE_FASE1.md`](Ver-Optimizada/LINEA_BASE_FASE1.md).
+
 ### Punto 7 · Refactorización
 
 - **NumPy vectorizado:**
@@ -179,6 +190,13 @@ El detalle está en `Ver-Optimizada/quality_report.md`.
 - `test_analysis.py` (1): caché de popularidad.
 
 Se prueban **propiedades** (por ejemplo, que la matriz sea simétrica con diagonal 0), no solo valores puntuales.
+
+**Parcial 3: 35 tests.** Se suman:
+
+- `test_characterization.py` (8): comparan por igualdad exacta la salida del recomendador contra un *golden master* generado con el código del Parcial 2, para poder refactorizar sin cambiar resultados.
+- `test_memory.py` (3): pico de memoria con `tracemalloc`; la lectura y el procesamiento paralelo no crecen con el tamaño del archivo, y la matriz de similitud se mantiene en float32.
+- `test_benchmarks.py` (7): benchmarks con línea base (se miden con `python tasks.py bench`).
+- Más casos en `test_api.py` (archivos grandes, registros reales procesados) y `test_large_file.py` (worker, consistencia paralelo/secuencial, demo del Punto 3).
 
 ### Punto 9 · Framework
 
@@ -204,6 +222,17 @@ Se prueban **propiedades** (por ejemplo, que la matriz sea simétrica con diagon
 | pytest | 11/11 |
 
 Las mediciones de tiempo y memoria salen de `scalene-profile.json` en cada carpeta de versión.
+
+**Calidad en el Parcial 3** (detalle en [`Ver-Optimizada/LINEA_BASE_FASE1.md`](Ver-Optimizada/LINEA_BASE_FASE1.md)):
+
+| Control | Punto de partida (Parcial 2) | Parcial 3 |
+|---|---|---|
+| Complejidad (Xenon) | 4 funciones en rango B | todas en A (máximo 5, promedio 2,67) |
+| Cobertura | 70,67 % | 100 % (umbral: 80 %) |
+| mypy | 6 errores | 0 |
+| Ruff | 33 hallazgos | 0 |
+| `recommend_movies` (40 usuarios, 400 × 300) | 447 ms | 198 ms (2,2×) |
+| Pico de memoria del procesamiento paralelo (400.000 filas, lotes de 5.000) | 67 MB, crece con el archivo | ~9,3 MB, plano |
 
 ## 7. Cómo ejecutar el proyecto
 
@@ -250,6 +279,18 @@ snakeviz mi_programa.prof                                # Visualización del pe
 
 Para ver el reporte de Scalene ya generado, usar `scalene view` dentro de la carpeta de la versión.
 
+Benchmarks con línea base y perfilado automatizados (Parcial 3):
+
+```powershell
+python tasks.py bench        # Mide y falla si algo empeora más de 25 % (mínimo) respecto de la línea base
+python tasks.py bench-save   # Guarda una nueva línea base (tras una mejora o al cambiar de máquina)
+python tasks.py profile      # cProfile y pyinstrument sobre benchmark.py; reportes en reports/
+```
+
+Las líneas base están en `Ver-Optimizada/metrics/benchmarks/<plataforma>/` y son **específicas de cada plataforma y versión de Python**. Si no hay una para tu combinación, `bench` mide igual pero avisa que no pudo comparar. Los tiempos dependen del hardware: conviene guardar la línea base en la misma máquina donde se va a comparar. El archivo incluye el nombre del equipo (`machine_info.node`).
+
+Se compara el **mínimo** y no la media: en 5 corridas completas el peor desvío entre corridas fue de 15 % para el mínimo y de 25 % para la media, que coincide con el umbral. Una regresión menor al 25 % no se detecta.
+
 ### 7.4 Archivos grandes (Punto 3)
 
 ```powershell
@@ -276,6 +317,8 @@ python tasks.py ci         # Todo lo anterior, en el orden del CI
 
 Los reportes quedan en `Ver-Optimizada/reports/` y la documentación generada no se versiona.
 
+`test` incluye las pruebas de memoria. Los benchmarks (`bench`) no forman parte de `ci` porque dependen de la máquina; ver 7.3.
+
 ## 8. API REST
 
 | Método | Ruta | Descripción |
@@ -288,9 +331,8 @@ Los reportes quedan en `Ver-Optimizada/reports/` y la documentación generada no
 
 ## 9. Limitaciones y próximos pasos
 
-- **`recommend_movies`** es el nuevo cuello de botella según cProfile (170 ms): todavía recorre en Python cada película no vista. El próximo paso es vectorizarla.
+- **`recommend_movies`** es el nuevo cuello de botella según cProfile (170 ms): todavía recorre en Python cada película no vista. El próximo paso es vectorizarla. (Parcial 3: un índice invertido película → quién la calificó la dejó 2,2× más rápida, pero sigue recorriendo en Python cada película no vista.)
 - **Índice invertido película → usuarios**, para no comparar pares de usuarios sin películas en común.
 - **Matriz dispersa** (SciPy) si se usan datasets reales como MovieLens, donde la matriz está llena en menos del 5 %.
 - **Caché distribuido** fuera del proceso, para escalar a varias instancias de la API.
-- Bajar a rango A las tres funciones del núcleo que quedaron en rango B de complejidad.
 - Los datos de la demo se cargan en memoria (`data_models.py`). El motor es modular y puede consumir CSV o bases de datos.
