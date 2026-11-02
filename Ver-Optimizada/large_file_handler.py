@@ -47,10 +47,11 @@ def generate_large_ratings_csv(
         writer.writerow(["user_id", "movie_id", "rating", "timestamp"])
 
         current_ts = int(time.time())
+        # Datos sintéticos de prueba: random no cumple ninguna función de seguridad (excepción B311 en SECURITY.md)
         for _ in range(num_records):
-            user_id = random.randint(1, num_users)
-            movie_id = random.randint(1, num_movies)
-            rating = round(random.uniform(1.0, 5.0), 1)
+            user_id = random.randint(1, num_users)  # nosec B311
+            movie_id = random.randint(1, num_movies)  # nosec B311
+            rating = round(random.uniform(1.0, 5.0), 1)  # nosec B311
             batch_records.append([user_id, movie_id, rating, current_ts])
 
             # Escribir en lotes para optimizar llamadas al buffer
