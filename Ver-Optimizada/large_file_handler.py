@@ -7,6 +7,7 @@ Punto 3 del Parcial: Escritura y lectura de archivos grandes mediante:
 """
 
 import csv
+import multiprocessing
 import os
 import random
 import time
@@ -138,7 +139,9 @@ def process_large_file_parallel(
     total_records = 0
     futures = []
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    # "spawn" en todas las plataformas: fork() desde un proceso con hilos (el pool de FastAPI) puede dejar
+    # trabados a los hijos, y Python 3.14 deja de usarlo por defecto en Linux.
+    with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as executor:
         for batch in stream_ratings_in_batches(filepath, batch_size=batch_size, buffer_size=buffer_size):
             total_records += len(batch)
             futures.append(executor.submit(_process_chunk_worker, batch))
