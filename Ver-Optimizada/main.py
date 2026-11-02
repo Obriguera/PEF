@@ -84,10 +84,12 @@ def process_large_file_endpoint(records: int = 200000):
 
     stats = process_large_file_parallel(filepath, batch_size=20000, max_workers=4)
     write_aggregated_results_buffered(output_filepath, stats)
+    # Si el archivo ya existía no se regenera con `records` filas: se informa lo que se procesó de verdad.
+    records_processed = int(sum(movie["count"] for movie in stats.values()))
 
     return {
         "status": "success",
-        "records_processed": records,
+        "records_processed": records_processed,
         "movies_aggregated": len(stats),
         "source_file": filepath,
         "output_file": output_filepath,

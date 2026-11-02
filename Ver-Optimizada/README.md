@@ -22,3 +22,4 @@ Otros documentos de esta carpeta:
 - [PLAN_PARCIAL_3.md](../PLAN_PARCIAL_3.md): requerimientos y plan del Parcial 3.
 - `docs/_build/html/index.html`: documentación generada con Sphinx (`python tasks.py docs-sphinx`).
 - `pyproject.toml` y `tasks.py`: configuración y comandos de los controles de calidad (los mismos que corre el CI).
+- [`metrics/`](metrics/): métricas por fase y líneas base de los benchmarks (`python tasks.py bench`, `bench-save`, `profile`).

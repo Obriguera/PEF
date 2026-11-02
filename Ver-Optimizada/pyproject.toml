@@ -12,7 +12,8 @@ authors = [{ name = "Octavio Briguera" }, { name = "Ricardo Lagoria" }]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "-ra"
+# Los benchmarks corren una sola vez, sin medir tiempos; "python tasks.py bench" los activa.
+addopts = "-ra --benchmark-disable"
 
 # -------------------------------------------------------------- coverage
 [tool.coverage.run]

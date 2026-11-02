@@ -69,3 +69,12 @@ def test_api_procesa_archivo_grande(tmp_path, monkeypatch):
     generado = (tmp_path / data["source_file"]).stat().st_mtime_ns
     assert client.get("/api/large-files/process", params={"records": 1000}).status_code == 200
     assert (tmp_path / data["source_file"]).stat().st_mtime_ns == generado
+
+
+def test_api_informa_los_registros_realmente_procesados(tmp_path, monkeypatch):
+    # Si el CSV ya existe, el endpoint lo reutiliza y no genera uno nuevo con el tamaño pedido:
+    # records_processed debe reflejar lo que se procesó, no el parámetro recibido.
+    monkeypatch.chdir(tmp_path)
+    assert client.get("/api/large-files/process", params={"records": 1000}).json()["records_processed"] == 1000
+    data = client.get("/api/large-files/process", params={"records": 5000}).json()
+    assert data["records_processed"] == 1000
