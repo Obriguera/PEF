@@ -1,0 +1,22 @@
+# Actualizaciones de dependencias y de acciones de GitHub.
+#
+# CAVEAT sin verificar: los locks (requirements*.txt) se generan con `uv pip compile --generate-hashes` y
+# se instalan con --require-hashes. Si un PR de Dependabot cambia una versión sin actualizar los hashes, el
+# CI lo va a rechazar (falla de forma segura). En ese caso, el procedimiento correcto es subir el piso en el
+# archivo .in y regenerar con `python tasks.py lock`, en lugar de mergear el PR tal cual.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/Ver-Optimizada"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["dependencies"]
