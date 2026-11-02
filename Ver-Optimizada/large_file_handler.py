@@ -12,12 +12,13 @@ import os
 import random
 import time
 from collections.abc import Generator, Iterable, Iterator
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 
 from data_models import Rating
 
 DEFAULT_BUFFER_SIZE = 64 * 1024  # 64 KB de buffer de E/S
 DEFAULT_BATCH_SIZE = 25000  # 25.000 registros por lote
+MAX_IN_FLIGHT_FACTOR = 2  # lotes en vuelo por worker: acota la memoria sin dejar ociosos a los procesos
 
 
 def generate_large_ratings_csv(
@@ -131,29 +132,28 @@ def process_large_file_parallel(
         1. El generador stream_ratings_in_batches() lee trozos del archivo en memoria acotada.
         2. Los lotes se envían a un ProcessPoolExecutor para procesar en núcleos paralelos de CPU.
         3. El proceso principal consolida los resultados parciales de cada worker.
+
+    Contrapresión: hay a lo sumo ``MAX_IN_FLIGHT_FACTOR * max_workers`` lotes en vuelo. Si se enviaran todos
+    antes de consumir resultados, los lotes pendientes se acumularían en memoria y el pico crecería con el
+    tamaño del archivo en lugar de con el del lote.
     """
     print(f"\n[PROCESAMIENTO PARALELO] Procesando '{filepath}' con {max_workers} procesos...")
     t_start = time.perf_counter()
 
     total_stats: dict[int, dict[str, float]] = {}
     total_records = 0
-    futures = []
+    max_in_flight = MAX_IN_FLIGHT_FACTOR * max_workers
+    pending: set[Future[dict[int, dict[str, float]]]] = set()
 
     # "spawn" en todas las plataformas: fork() desde un proceso con hilos (el pool de FastAPI) puede dejar
     # trabados a los hijos, y Python 3.14 deja de usarlo por defecto en Linux.
     with ProcessPoolExecutor(max_workers=max_workers, mp_context=multiprocessing.get_context("spawn")) as executor:
         for batch in stream_ratings_in_batches(filepath, batch_size=batch_size, buffer_size=buffer_size):
             total_records += len(batch)
-            futures.append(executor.submit(_process_chunk_worker, batch))
-
-        # Consolidar resultados a medida que los workers terminan
-        for future in as_completed(futures):
-            partial_stats = future.result()
-            for movie_id, data in partial_stats.items():
-                if movie_id not in total_stats:
-                    total_stats[movie_id] = {"sum": 0.0, "count": 0}
-                total_stats[movie_id]["sum"] += data["sum"]
-                total_stats[movie_id]["count"] += data["count"]
+            pending.add(executor.submit(_process_chunk_worker, batch))
+            if len(pending) >= max_in_flight:
+                pending = _consolidate(pending, total_stats, FIRST_COMPLETED)
+        _consolidate(pending, total_stats, ALL_COMPLETED)
 
     elapsed = time.perf_counter() - t_start
     print(
@@ -161,6 +161,20 @@ def process_large_file_parallel(
         f"({len(total_stats):,} películas calculadas)."
     )
     return total_stats
+
+
+def _consolidate(
+    pending: set[Future[dict[int, dict[str, float]]]], total_stats: dict[int, dict[str, float]], return_when: str
+) -> set[Future[dict[int, dict[str, float]]]]:
+    """Espera a que terminen workers, suma sus resultados parciales y devuelve los lotes que siguen pendientes."""
+    done, still_pending = wait(pending, return_when=return_when)
+    for future in done:
+        for movie_id, data in future.result().items():
+            if movie_id not in total_stats:
+                total_stats[movie_id] = {"sum": 0.0, "count": 0}
+            total_stats[movie_id]["sum"] += data["sum"]
+            total_stats[movie_id]["count"] += data["count"]
+    return still_pending
 
 
 def write_aggregated_results_buffered(
