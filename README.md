@@ -72,6 +72,9 @@ PEF/
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
 │   ├── quality_report.md       # Reporte de Flake8 y Radon
 │   └── PARCIAL_2_REPORTE_FINAL.md
+├── .github/           # CodeQL (workflow) y Dependabot
+├── PLAN_PARCIAL_3.md  # Requerimientos, decisiones y estado del Parcial 3
+├── SECURITY.md        # Política de seguridad, controles, excepciones y modelo de amenazas
 └── Parcial-2.txt      # Checklist de los temas del Parcial 2
 ```
 
@@ -169,7 +172,7 @@ Elegimos Radon en lugar de SonarQube porque es liviano, no necesita servidor y m
 
 El detalle está en `Ver-Optimizada/quality_report.md`.
 
-> **Actualización del Parcial 3.** Estas cifras son las del Parcial 2. Después del refactor de la Fase 1, **todas las funciones están en rango A** (complejidad máxima 5, promedio 2,67), `_cosine_similarity` se eliminó por no tener uso en producción, y el análisis se hace con Ruff (en lugar de Flake8) y Xenon. Ver [`Ver-Optimizada/LINEA_BASE_FASE1.md`](Ver-Optimizada/LINEA_BASE_FASE1.md).
+> **Actualización del Parcial 3.** Estas cifras son las del Parcial 2. Después del refactor de la Fase 1, **todas las funciones están en rango A** (complejidad máxima 5, promedio 2,70), `_cosine_similarity` se eliminó por no tener uso en producción, y el análisis se hace con Ruff (en lugar de Flake8) y Xenon. Ver [`Ver-Optimizada/LINEA_BASE_FASE1.md`](Ver-Optimizada/LINEA_BASE_FASE1.md).
 
 ### Punto 7 · Refactorización
 
@@ -227,7 +230,7 @@ Las mediciones de tiempo y memoria salen de `scalene-profile.json` en cada carpe
 
 | Control | Punto de partida (Parcial 2) | Parcial 3 |
 |---|---|---|
-| Complejidad (Xenon) | 4 funciones en rango B | todas en A (máximo 5, promedio 2,67) |
+| Complejidad (Xenon) | 4 funciones en rango B | todas en A (máximo 5, promedio 2,70) |
 | Cobertura | 70,67 % | 100 % (umbral: 80 %) |
 | mypy | 6 errores | 0 |
 | Ruff | 33 hallazgos | 0 |
@@ -309,6 +312,7 @@ python tasks.py lint       # Ruff: estilo y errores potenciales
 python tasks.py typecheck  # mypy
 python tasks.py complexity # Radon + Xenon (umbral: rango A)
 python tasks.py sast       # Bandit (reporte SARIF en reports/)
+python tasks.py secrets    # Gitleaks sobre el historial de git (necesita el binario; ver SECURITY.md)
 python tasks.py test       # pytest + cobertura (umbral: 80 %)
 python tasks.py audit      # pip-audit sobre los locks
 python tasks.py docs-sphinx  # Genera docs/_build/html
@@ -318,6 +322,18 @@ python tasks.py ci         # Todo lo anterior, en el orden del CI
 Los reportes quedan en `Ver-Optimizada/reports/` y la documentación generada no se versiona.
 
 `test` incluye las pruebas de memoria. Los benchmarks (`bench`) no forman parte de `ci` porque dependen de la máquina; ver 7.3.
+
+### 7.6 Seguridad
+
+La política de bloqueo por severidad, el registro de falsos positivos y excepciones, el modelo de amenazas y los riesgos aceptados están en [`SECURITY.md`](SECURITY.md). En resumen:
+
+| Control | Herramienta | Rechaza si… |
+|---|---|---|
+| Código inseguro | Bandit (SARIF) y CodeQL | hay un hallazgo de severidad media o alta con confianza media o alta |
+| Secretos | Gitleaks | hay cualquier hallazgo en el historial |
+| Dependencias | pip-audit y Dependabot | hay una vulnerabilidad conocida sin excepción vigente |
+
+Las excepciones llevan motivo y fecha; las de pip-audit, además, vencimiento.
 
 ## 8. API REST
 
