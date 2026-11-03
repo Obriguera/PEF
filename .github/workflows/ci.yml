@@ -1,0 +1,325 @@
+# Integración continua de Ver-Optimizada.
+#
+# Cada control llama a la misma tarea de Ver-Optimizada/tasks.py que se corre en local: lo que falla acá, falla
+# igual en tu máquina con `python tasks.py <tarea>`. Herramienta, comando, reporte y criterio de rechazo de cada
+# control están en SECURITY.md (seguridad) y en el README (calidad y rendimiento).
+#
+# El job `resultado` es el único check que hay que exigir en la protección de la rama master.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # en master se completan todas las corridas
+
+defaults:
+  run:
+    working-directory: Ver-Optimizada
+
+env:
+  PYTHON_VERSION: "3.13"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+# Las acciones se fijan por SHA de commit (una etiqueta puede moverse); Dependabot actualiza los SHA.
+#   actions/checkout          3d3c42e5aac5ba805825da76410c181273ba90b1  v7.0.1
+#   actions/setup-python      6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  v7.1.0
+#   actions/upload-artifact   cf430e030ddbb5b0abf93d22962f4752f3646cd9  v7.0.2
+#   github/codeql-action      9b3254085494b55a0f7c4c2b3d2d52cc712ce370  v4.39.1 (upload-sarif)
+
+jobs:
+  calidad:
+    name: Calidad estática
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write # subir los hallazgos de Bandit a Code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      # Un paso por control y con !cancelled(): si falla uno, los demás igual informan su resultado.
+      - name: Ruff (errores, estilo y complejidad)
+        run: python tasks.py lint
+      - name: mypy (tipado)
+        if: ${{ !cancelled() }}
+        run: python tasks.py typecheck
+      - name: Radon y Xenon (complejidad, umbral A)
+        if: ${{ !cancelled() }}
+        run: python tasks.py complexity
+      - name: Bandit (código inseguro)
+        if: ${{ !cancelled() }}
+        run: python tasks.py sast
+      - name: Resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "### Calidad estática" >> "$GITHUB_STEP_SUMMARY"
+          python tasks.py summary
+      - name: Publicar los hallazgos de Bandit en Code scanning
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        continue-on-error: true # un problema al reportar no debe bloquear el merge
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: Ver-Optimizada/reports/bandit.sarif
+          category: bandit
+      - name: Guardar los reportes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reportes-calidad
+          path: Ver-Optimizada/reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  secretos:
+    name: Secretos (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write # subir los hallazgos de Gitleaks a Code scanning
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      # Checksum fijado en el repositorio: protege también si se reemplazara la release descargada.
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Gitleaks recorre todo el historial; un clon superficial daría un "limpio" engañoso
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Instalar Gitleaks (checksum verificado)
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -sSfL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
+          mkdir bin
+          tar -xzf gitleaks.tar.gz -C bin gitleaks
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+      - name: Gitleaks (historial de git)
+        run: python tasks.py secrets # tasks.py solo usa la biblioteca estándar: no hace falta instalar dependencias
+      - name: Resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "### Secretos" >> "$GITHUB_STEP_SUMMARY"
+          python tasks.py summary
+      - name: Publicar los hallazgos de Gitleaks en Code scanning
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: Ver-Optimizada/reports/gitleaks.sarif
+          category: gitleaks
+      - name: Guardar los reportes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reportes-secretos
+          path: Ver-Optimizada/reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  pruebas:
+    name: Pruebas (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # que se vea en qué versiones falla, no solo en la primera
+      matrix:
+        python: ["3.11", "3.12", "3.13"] # el lock está generado para Python 3.11 o superior
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: pytest con cobertura (incluye las pruebas de memoria)
+        run: python tasks.py test
+      - name: Resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "### Pruebas (Python ${{ matrix.python }})" >> "$GITHUB_STEP_SUMMARY"
+          python tasks.py summary
+      - name: Guardar los reportes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reportes-pruebas-${{ matrix.python }}
+          path: Ver-Optimizada/reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  auditoria:
+    name: Dependencias (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: pip-audit sobre los locks
+        run: python tasks.py audit
+      - name: Resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "### Dependencias" >> "$GITHUB_STEP_SUMMARY"
+          python tasks.py summary
+      - name: Guardar los reportes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reportes-auditoria
+          path: Ver-Optimizada/reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  documentacion:
+    name: Documentación (Sphinx, falla ante advertencias)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: Sphinx con -W
+        run: python tasks.py docs-sphinx
+      - name: Guardar la documentación generada
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documentacion-sphinx
+          path: Ver-Optimizada/docs/_build/html/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  rendimiento:
+    name: Benchmarks contra el commit base
+    needs: pruebas # no tiene sentido medir velocidad si las pruebas fallan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # hace falta el commit base para medirlo
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      # La línea base versionada en metrics/benchmarks/ es de otra máquina y no sirve acá: se mide el commit base
+      # y el actual seguidos, en este mismo runner, y se falla si algo empeora más de 25 % (mínimo).
+      - name: Benchmarks (commit base y actual en la misma máquina)
+        env:
+          BENCH_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python tasks.py bench-vs-base
+      - name: Resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "### Benchmarks" >> "$GITHUB_STEP_SUMMARY"
+          python tasks.py summary
+      - name: Guardar los reportes
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reportes-rendimiento
+          path: Ver-Optimizada/reports/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  perfilado:
+    name: Perfilado (informativo, no bloquea)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: cProfile y pyinstrument
+        run: python tasks.py profile
+      - name: Guardar los perfiles
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: perfiles
+          path: |
+            Ver-Optimizada/reports/profile.prof
+            Ver-Optimizada/reports/profile.html
+          if-no-files-found: ignore
+          retention-days: 30
+
+  resultado:
+    name: Resultado
+    if: ${{ always() }}
+    needs: [calidad, secretos, pruebas, auditoria, documentacion, rendimiento]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }} # este job no hace checkout
+    steps:
+      - name: Evaluar los resultados
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS"])
+          lines = ["### Resultado del CI", "", "| Job | Resultado |", "|---|---|"]
+          lines += [f"| {name} | {data['result']} |" for name, data in needs.items()]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          failed = [name for name, data in needs.items() if data["result"] != "success"]
+          if failed:
+              sys.exit("Fallaron o no corrieron: " + ", ".join(failed))
+          PY
