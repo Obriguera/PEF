@@ -182,12 +182,28 @@
       }
     },
     "benchmarks": {
-      "modo": "commit base y actual medidos en el mismo runner",
+      "modo": "mejor de 3 rondas intercaladas (base, actual, base, actual...) en el mismo runner; ambos lados con la definición actual de los benchmarks",
       "umbral": "min:25%",
-      "verificado": {
-        "sin_cambios": "pasa (exit 0)",
-        "lentitud_de_108_por_ciento": "falla (exit 1)"
-      }
+      "ruido_medido_sobre_codigo_identico": {
+        "una_medicion_contra_otra_vueltas_de_1ms": {
+          "razones": "0.77 a 1.28",
+          "pares_sobre_25_por_ciento": "2 de 10"
+        },
+        "una_medicion_contra_otra_vueltas_de_12ms_o_mas": {
+          "razones": "0.69 a 1.24",
+          "pares_sobre_25_por_ciento": "0 de 10"
+        },
+        "bench_vs_base_mejor_de_3_intercalado": {
+          "razones": "0.91 a 1.08",
+          "corridas_en_rojo": "0 de 6"
+        }
+      },
+      "deteccion_verificada": {
+        "lentitud_moderada_deliberada": "+40 % detectada, solo en el benchmark afectado",
+        "lentitud_de_108_por_ciento": "detectada"
+      },
+      "error_del_diseno_anterior": "cada lado se medía con sus propios benchmarks: al cambiar la definición daba ~21x en 6 de 6 corridas",
+      "linea_base_versionada": "0002_baseline.json (la 0001 queda como historia, no comparable)"
     },
     "gitleaks": {
       "version": "8.30.1",
@@ -199,6 +215,11 @@
       "errores_plantados_detectados": "1 de 2",
       "actionlint": "no se pudo ejecutar"
     },
-    "ejecutado_en_github": false
+    "ejecutado_en_github": "parcialmente: la primera ejecución del PR #7 falló en el job de benchmarks; el resto de los jobs no se revisó",
+    "primera_ejecucion_en_github": {
+      "job": "rendimiento",
+      "resultado": "falló",
+      "causa": "pytest-benchmark: storage.relative_to(Path.cwd()) con el almacenamiento en /tmp cuando el machine_info difiere entre mediciones; resuelto sin usar --benchmark-compare en el CI"
+    }
   }
 }

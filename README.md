@@ -292,7 +292,9 @@ python tasks.py profile      # cProfile y pyinstrument sobre benchmark.py; repor
 
 Las líneas base están en `Ver-Optimizada/metrics/benchmarks/<plataforma>/` y son **específicas de cada plataforma y versión de Python**. Si no hay una para tu combinación, `bench` mide igual pero avisa que no pudo comparar. Los tiempos dependen del hardware: conviene guardar la línea base en la misma máquina donde se va a comparar. El archivo incluye el nombre del equipo (`machine_info.node`).
 
-Se compara el **mínimo** y no la media: en 5 corridas completas el peor desvío entre corridas fue de 15 % para el mínimo y de 25 % para la media, que coincide con el umbral. Una regresión menor al 25 % no se detecta.
+Se compara el **mínimo** y no la media: el ruido de una máquina compartida solo suma tiempo. Una regresión menor al 25 % no se detecta.
+
+`bench` compara **una** medición contra la línea base guardada, así que es orientativo: sobre código idéntico, dos mediciones consecutivas dieron razones de 0,77 a 1,28. Para decidir, usá `bench-vs-base` (abajo), que intercala varias mediciones de cada lado. Para que el ruido no domine, cada vuelta de un benchmark dura al menos ~10 ms: con ~1 ms por vuelta daba falsos rojos.
 
 ### 7.4 Archivos grandes (Punto 3)
 
@@ -354,8 +356,11 @@ Cada job llama a la misma tarea de `tasks.py` que se usa en local, así que un f
 Cada job escribe un resumen (pruebas, cobertura, complejidad, hallazgos y tiempos) en la página de la ejecución.
 
 **Benchmarks.** Una línea base medida en otra máquina no es comparable. Por eso el CI mide el commit base y el actual
-seguidos, en el mismo runner (`bench-vs-base`). Si un cambio es lento a propósito, hay que mergearlo sabiéndolo: no
-existe una línea base guardada que actualizar.
+en el mismo runner (`bench-vs-base`): 3 rondas intercaladas (base, actual, base, actual…) y se comparan los **mejores
+tiempos** de cada lado. Los dos lados se miden con la **misma definición de benchmark** (la del commit actual, aplicada
+al código de cada commit): si cada uno usara la suya, un PR que cambie un benchmark compararía cosas distintas. Si esa
+definición no corre sobre el commit base (por ejemplo, prueba una función que todavía no existía), mide y avisa que no
+pudo comparar. Si un cambio es lento a propósito, hay que mergearlo sabiéndolo: no existe una línea base que actualizar.
 
 **Protección de la rama.** Para que el CI impida el merge, el dueño del repositorio debe exigir el check **Resultado**
 en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el CI avisa pero no bloquea.

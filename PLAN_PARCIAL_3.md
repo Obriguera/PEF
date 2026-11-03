@@ -63,6 +63,10 @@ README, en la documentación y en las diapositivas.
   desvío entre corridas fue 25,4 % para la media (igual al umbral: falsos rojos), 48,8 % para la mediana
   y 15,1 % para el mínimo. Contrapartida: una regresión menor al 25 % no se detecta. Validado: una
   lentitud pura de +126,8 % hace fallar `bench` con exit 1; tres corridas sin cambios pasaron las tres.
+  **Corrección (Fase 4):** el razonamiento sobre el margen estaba mal. El 15 % era el desvío de cada corrida
+  respecto del *promedio*, pero una regresión compara *dos corridas entre sí*: dos desvíos de ±15 % dan hasta
+  ~35 %. Medido sobre código idéntico, dos mediciones consecutivas dieron razones de 0,77 a 1,28, y 2 de 10
+  pares superaron el 25 % (falso rojo). Ver «Decisiones y hallazgos de la Fase 4».
 - **Los benchmarks no están en `ci`** (dependen de la máquina). Son `bench`, `bench-save` y `profile`.
   Sin línea base para la plataforma, `bench` mide y avisa que no comparó.
 - **La memoria del procesamiento paralelo crecía con el archivo** (18 → 67 MB entre 100.000 y 400.000
@@ -107,8 +111,29 @@ README, en la documentación y en las diapositivas.
   igualdad exacta.
 - **Benchmarks: se mide el commit base en el mismo runner** (`bench-vs-base`), porque la línea base versionada
   en `metrics/benchmarks/` es de otra máquina. El código del commit base se mide con el comando del `tasks.py`
-  actual, para que el resultado no dependa de qué `tasks.py` tenga ese commit. Probado con git real: sin cambios
-  pasa; con una lentitud de +108 % falla. Cuando no hay commit base utilizable, mide y avisa que no comparó.
+  actual, para que el resultado no dependa de qué `tasks.py` tenga ese commit. Cuando no hay commit base
+  utilizable, mide y avisa que no comparó.
+- **Primer fallo real del CI (PR #7), y lo que destapó.** El job de benchmarks abortó con `INTERNALERROR
+  ValueError: '/tmp/…/storage' is not in the subpath of '…/Ver-Optimizada'` (exit 3). Causa: cuando el
+  `machine_info` de la medición guardada y el de la actual difieren, pytest-benchmark arma una advertencia con
+  `storage.relative_to(Path.cwd())`, y el almacenamiento temporal estaba en `/tmp`. Mi ensayo local no lo vio porque
+  en mi entorno el `machine_info` era idéntico (frecuencia de CPU fija); en un runner de GitHub varía. Se reprodujo
+  forzando una diferencia en el `machine_info`, y se resolvió dejando de usar `--benchmark-compare` en el CI: se
+  comparan los JSON con código propio.
+- **Corrigiendo ese fallo aparecieron tres problemas más de diseño,** todos medidos:
+  1. *Falsos rojos.* Comparar una medición contra otra daba razones de 0,77 a 1,28 sobre código idéntico (2 de
+     10 pares > 25 %). Un solo benchmark (`analyze_popularity`, ~1 ms por vuelta) causaba el ruido: a esa
+     escala el jitter del reloj es de ±20 %. Se alargaron las vueltas de los benchmarks rápidos a ≥12 ms
+     (repitiendo el trabajo adentro de la vuelta): 0 de 10 pares > 25 %. Subir el umbral no era opción: dejaría
+     de detectar regresiones reales.
+  2. *Medición intercalada.* `bench-vs-base` mide 3 rondas intercaladas de cada lado y compara los mejores
+     tiempos. Sobre código idéntico: razones de 0,91 a 1,08 y 0 de 6 corridas en rojo. Detecta una lentitud
+     moderada deliberada (+40 %), marcando solo el benchmark afectado.
+  3. *Definiciones distintas en cada lado.* Cada lado se medía con sus propios benchmarks: al cambiar la definición,
+     el CI comparaba la versión vieja contra la nueva y daba ~21× en 6 de 6 corridas. Ahora los dos lados usan la
+     definición actual, aplicada al código de cada commit.
+- **La línea base versionada se regeneró** (`0002_baseline.json`) porque las definiciones cambiaron. La
+  `0001_baseline.json` queda como historia, no comparable.
 - **Gitleaks:** el binario se instala con un SHA-256 fijado en el workflow (no el de la release, que cambiaría
   junto con ella). Probado con el checksum correcto (instala) y con uno incorrecto (aborta sin instalar nada).
 - **Validación del workflow:** contra el esquema oficial de GitHub (SchemaStore) y con los trozos con lógica
