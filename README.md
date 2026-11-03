@@ -72,7 +72,7 @@ PEF/
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
 │   ├── quality_report.md       # Reporte de Flake8 y Radon
 │   └── PARCIAL_2_REPORTE_FINAL.md
-├── .github/           # CodeQL (workflow) y Dependabot
+├── .github/           # Workflows de CI y CodeQL, y Dependabot
 ├── PLAN_PARCIAL_3.md  # Requerimientos, decisiones y estado del Parcial 3
 ├── SECURITY.md        # Política de seguridad, controles, excepciones y modelo de amenazas
 └── Parcial-2.txt      # Checklist de los temas del Parcial 2
@@ -334,6 +334,34 @@ La política de bloqueo por severidad, el registro de falsos positivos y excepci
 | Dependencias | pip-audit y Dependabot | hay una vulnerabilidad conocida sin excepción vigente |
 
 Las excepciones llevan motivo y fecha; las de pip-audit, además, vencimiento.
+
+### 7.7 Integración continua
+
+El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre en cada push y en cada pull request a `master`.
+Cada job llama a la misma tarea de `tasks.py` que se usa en local, así que un fallo del CI se reproduce con un comando:
+
+| Job | Qué controla | Reproducir en local | Rechaza si… | Reporte (artefacto) |
+|---|---|---|---|---|
+| Calidad estática | Ruff, mypy, Xenon y Bandit | `python tasks.py lint typecheck complexity sast` | error de Ruff o mypy, función peor que A, o hallazgo de Bandit de severidad y confianza medias o altas | `reportes-calidad` |
+| Secretos | Gitleaks sobre todo el historial | `python tasks.py secrets` | cualquier hallazgo | `reportes-secretos` |
+| Pruebas (3.11, 3.12 y 3.13) | pytest, cobertura y memoria | `python tasks.py test` | falla un test o la cobertura es menor a 80 % | `reportes-pruebas-*` |
+| Dependencias | pip-audit sobre los locks | `python tasks.py audit` | vulnerabilidad sin excepción vigente | `reportes-auditoria` |
+| Documentación | Sphinx con `-W` | `python tasks.py docs-sphinx` | advertencia o error | `documentacion-sphinx` |
+| Benchmarks | pytest-benchmark contra el commit base | `BENCH_BASE_SHA=<sha> python tasks.py bench-vs-base` | el mínimo de algún benchmark empeora más de 25 % | `reportes-rendimiento` |
+| Perfilado | cProfile y pyinstrument | `python tasks.py profile` | no bloquea | `perfiles` |
+| **Resultado** | agrega a todos los anteriores | — | cualquier job bloqueante no terminó en éxito | resumen de la ejecución |
+
+Cada job escribe un resumen (pruebas, cobertura, complejidad, hallazgos y tiempos) en la página de la ejecución.
+
+**Benchmarks.** Una línea base medida en otra máquina no es comparable. Por eso el CI mide el commit base y el actual
+seguidos, en el mismo runner (`bench-vs-base`). Si un cambio es lento a propósito, hay que mergearlo sabiéndolo: no
+existe una línea base guardada que actualizar.
+
+**Protección de la rama.** Para que el CI impida el merge, el dueño del repositorio debe exigir el check **Resultado**
+en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el CI avisa pero no bloquea.
+
+**Qué no cubre.** Solo corre en Linux. Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
+macOS no.
 
 ## 8. API REST
 

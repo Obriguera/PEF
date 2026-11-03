@@ -21,6 +21,7 @@ Otros documentos de esta carpeta:
 - [`metrics/`](metrics/): las mismas métricas en JSON, una por versión, para los gráficos de evolución.
 - [PLAN_PARCIAL_3.md](../PLAN_PARCIAL_3.md): requerimientos y plan del Parcial 3.
 - [SECURITY.md](../SECURITY.md): política de seguridad, excepciones registradas y modelo de amenazas.
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): el pipeline de CI; cada job llama a una tarea de `tasks.py` (ver la sección 7.7 del README principal).
 - `docs/_build/html/index.html`: documentación generada con Sphinx (`python tasks.py docs-sphinx`).
 - `pyproject.toml` y `tasks.py`: configuración y comandos de los controles de calidad (los mismos que corre el CI).
 - [`metrics/`](metrics/): métricas por fase y líneas base de los benchmarks (`python tasks.py bench`, `bench-save`, `profile`).

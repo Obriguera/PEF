@@ -53,7 +53,7 @@ README, en la documentación y en las diapositivas.
 | 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2, tag `parcial3-fase1` |
 | 2. Rendimiento y memoria | Benchmarks con pytest-benchmark y línea base, tests de memoria con tracemalloc, tarea de profiling; `spawn` en el `ProcessPoolExecutor`, contrapresión y `records_processed` real | ✅ en PR (tag `parcial3-fase2` tras el merge) |
 | 3. Seguridad | `SECURITY.md` (política por severidad, registro de excepciones, modelo de amenazas), excepciones de Bandit y pip-audit, validación de entradas de la API, workflow de CodeQL y Dependabot | ✅ en PR (tag `parcial3-fase3` tras el merge). CodeQL y Dependabot **sin ejecutar** en GitHub |
-| 4. Pipeline | `.github/workflows/ci.yml` (con `fetch-depth: 0` para Gitleaks, y subiendo los SARIF a Code scanning) + protección de `master` (la configura el dueño del repo). El job de rendimiento tiene que generar la línea base **en el mismo runner** (`bench-save` sobre la rama base y después `bench` sobre el PR): la versionada en `metrics/benchmarks/` se midió en otra máquina | ⏳ |
+| 4. Pipeline | `.github/workflows/ci.yml`: calidad, secretos, pruebas en Python 3.11/3.12/3.13, dependencias, documentación, benchmarks contra el commit base, perfilado y un job `resultado` que agrega todo. La protección de `master` (exigir el check **Resultado**) la configura el dueño del repo | ✅ en PR (tag `parcial3-fase4` tras el merge). **Sin ejecutar en GitHub** |
 | 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
 | 6. Evolución entre versiones | `evolucion/medir.py` (subcomandos `medir`, `graficar`, `todo`), métricas en JSON, gráficos PNG para el README, MkDocs y las diapositivas | ⏳ |
 
@@ -95,16 +95,31 @@ README, en la documentación y en las diapositivas.
 - **Pendiente del dueño del repo** (Settings): Dependabot alerts y security updates, secret scanning con push
   protection, private vulnerability reporting y protección de `master` (lista en `SECURITY.md`).
 
-### Pipeline previsto (Fase 4)
+### Decisiones y hallazgos de la Fase 4
 
-```
-setup (pip con hashes + caché)
-  ├─► calidad-estática: ruff · mypy · xenon · bandit · gitleaks   (en paralelo)
-  ├─► tests: pytest + cobertura ≥ umbral
-  ├─► deps-y-docs: pip-audit · mkdocs --strict · markdownlint · lychee
-  └─► rendimiento (needs: tests): benchmark vs. línea base · memoria · profiling
-         └─► resultado: resumen en GITHUB_STEP_SUMMARY + artefactos
-```
+- **Cada job llama a `python tasks.py <tarea>`:** una sola fuente de verdad. Los pasos de calidad corren por
+  separado con `!cancelled()`, para que un fallo de Ruff no oculte los de mypy o Bandit.
+- **El job `resultado` es el único check a exigir** en la protección de rama. Falla si algún job no terminó en
+  `success` (incluso omitido o cancelado); `perfilado` queda afuera porque es informativo.
+- **La matriz 3.11/3.12/3.13 se verificó de verdad,** instalando el lock con `pip` y hashes en tres entornos
+  limpios (no con `uv`, como en las fases anteriores): 57 tests y 100 % de cobertura en las tres, aunque NumPy
+  difiera entre versiones (2.4.6 en 3.11 y 2.5.4 en 3.12 y 3.13), con el golden master comparando floats por
+  igualdad exacta.
+- **Benchmarks: se mide el commit base en el mismo runner** (`bench-vs-base`), porque la línea base versionada
+  en `metrics/benchmarks/` es de otra máquina. El código del commit base se mide con el comando del `tasks.py`
+  actual, para que el resultado no dependa de qué `tasks.py` tenga ese commit. Probado con git real: sin cambios
+  pasa; con una lentitud de +108 % falla. Cuando no hay commit base utilizable, mide y avisa que no comparó.
+- **Gitleaks:** el binario se instala con un SHA-256 fijado en el workflow (no el de la release, que cambiaría
+  junto con ella). Probado con el checksum correcto (instala) y con uno incorrecto (aborta sin instalar nada).
+- **Validación del workflow:** contra el esquema oficial de GitHub (SchemaStore) y con los trozos con lógica
+  ejecutados en local. El esquema es útil pero no exhaustivo: de 2 errores plantados detectó 1. `actionlint` no
+  se pudo usar (descarga de binario denegada).
+- **Pendientes y riesgos:**
+  - Nada de esto corrió todavía en GitHub; la primera ejecución puede pedir ajustes.
+  - No se midió el ruido de los runners de GitHub. Si el job de benchmarks da falsos rojos, hay que sacarlo de
+    los checks exigidos o subir el umbral.
+  - Solo Linux. No hay job de Windows ni de macOS.
+  - Hay que sincronizar `Obriguera/PEF`: tiene hasta la Fase 2 y le faltan las Fases 3 y 4.
 
 ### Evolución entre versiones (Fase 6)
 
