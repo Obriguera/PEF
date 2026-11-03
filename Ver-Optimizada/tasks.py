@@ -186,9 +186,13 @@ def test() -> None:
 # Las líneas base se guardan por plataforma y versión de Python (p. ej. Linux-CPython-3.13-64bit): en otra
 # combinación no hay con qué comparar y el control avisa en lugar de fallar.
 BENCH_STORAGE = ROOT / "metrics" / "benchmarks"
-# Se compara el mínimo y no la media: el ruido de una máquina compartida solo suma tiempo, así que el mínimo
-# es la estadística estable. Medido en 5 corridas, su peor desvío fue 15 % (la media llegó a 25 %).
-BENCH_MAX_REGRESSION = "min:25%"
+# Se compara el mínimo y no la media: el ruido de una máquina compartida solo suma tiempo.
+# CUIDADO con el margen: dos mediciones consecutivas del MISMO código dieron razones de 0,77 a 1,28 (10 pares), así
+# que comparar una medición contra otra con umbral 25 % da ~16 % de falsos rojos. bench-vs-base intercala
+# BENCH_ROUNDS mediciones de cada lado y compara los mejores tiempos (0,3 % de falsos rojos medido en simulación).
+BENCH_THRESHOLD = 0.25
+BENCH_ROUNDS = 3
+BENCH_MAX_REGRESSION = f"min:{round(BENCH_THRESHOLD * 100)}%"  # para `bench`, que compara contra la base guardada
 
 
 def bench_command(storage: Path) -> list[str]:
@@ -248,34 +252,111 @@ def checkout_base(sha: str, destination: Path) -> bool:
         return False
     if git("worktree", "add", "--detach", str(destination), sha).returncode != 0:
         return False
-    return (destination / ROOT.name / "tests" / "test_benchmarks.py").exists()
+    return (destination / ROOT.name).is_dir()
+
+
+class BenchError(Exception):
+    """Los benchmarks no pudieron correr (no es lo mismo que una regresión)."""
+
+
+class BaseNotComparable(BenchError):
+    """Los benchmarks actuales no corren sobre el commit base (p. ej. prueban una función que todavía no existía)."""
+
+
+def measure_minimums(directory: Path, json_path: Path, storage: Path) -> dict[str, float]:
+    """Corre los benchmarks de ``directory`` y devuelve el mínimo (en segundos) de cada uno."""
+    command = [*bench_command(storage), f"--benchmark-json={json_path}"]
+    result = subprocess.run(command, cwd=directory, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise BenchError(f"{result.stdout[-3000:]}\n{result.stderr[-1000:]}")
+    return {
+        item["name"]: item["stats"]["min"] for item in json.loads(json_path.read_text(encoding="utf-8"))["benchmarks"]
+    }
+
+
+def use_current_benchmarks(base_dir: Path) -> None:
+    """Copia al commit base los benchmarks actuales, para medir los dos lados con la MISMA definición.
+
+    Si cada lado usara los suyos, un PR que cambie un benchmark (o su dataset) compararía cosas distintas.
+    """
+    for relative in ("tests/test_benchmarks.py", "benchmark.py"):
+        shutil.copy2(ROOT / relative, base_dir / relative)
+
+
+def interleaved_minimums(base_dir: Path, tmp: Path, rounds: int) -> tuple[dict[str, float], dict[str, float]]:
+    """Mide base y actual en forma intercalada y se queda con el mejor tiempo de cada benchmark en cada lado."""
+    best: dict[str, dict[str, float]] = {"base": {}, "actual": {}}
+    for index in range(rounds):
+        for label, directory in (("base", base_dir), ("actual", ROOT)):
+            print(f"  ronda {index + 1}/{rounds}: {label}", flush=True)
+            try:
+                minimums = measure_minimums(directory, tmp / f"{label}-{index}.json", tmp / "storage")
+            except BenchError as error:
+                if label == "base":
+                    raise BaseNotComparable(str(error)) from error
+                raise
+            for name, value in minimums.items():
+                best[label][name] = min(best[label].get(name, value), value)
+    return best["base"], best["actual"]
+
+
+def compare_minimums(base: dict[str, float], actual: dict[str, float]) -> list[tuple[str, float, float, float]]:
+    """(nombre, base en ms, actual en ms, actual / base) de los benchmarks que están en los dos lados."""
+    return [
+        (name, base[name] * 1000, actual[name] * 1000, actual[name] / base[name])
+        for name in sorted(base)
+        if name in actual
+    ]
+
+
+def report_comparison(rows: list[tuple[str, float, float, float]], threshold: float) -> list[str]:
+    """Imprime la tabla comparativa, la guarda en reports/ y devuelve los benchmarks que superan el umbral."""
+    print(f"\n{'Prueba':<38}{'base (ms)':>11}{'actual (ms)':>13}{'actual/base':>13}")
+    for name, base_ms, actual_ms, ratio in rows:
+        flag = "   <-- REGRESIÓN" if ratio > 1 + threshold else ""
+        print(f"{name:<38}{base_ms:>11.3f}{actual_ms:>13.3f}{ratio:>13.2f}{flag}")
+    REPORTS.mkdir(exist_ok=True)
+    comparison = [{"name": n, "base_min_ms": b, "actual_min_ms": a, "ratio": r} for n, b, a, r in rows]
+    payload = {"umbral": threshold, "rondas": BENCH_ROUNDS, "benchmarks": comparison}
+    (REPORTS / "benchmark-comparison.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return [name for name, _base, _actual, ratio in rows if ratio > 1 + threshold]
 
 
 @task("Benchmarks: compara contra el commit BENCH_BASE_SHA, medido en esta misma máquina")
 def bench_vs_base() -> None:
-    """Una línea base de otra máquina no sirve: se mide el commit base y el actual seguidos, en el mismo equipo.
+    """Una línea base de otra máquina no sirve: se mide el commit base y el actual en el mismo equipo.
 
-    El código del commit base se mide con el comando de ESTE tasks.py, para que el resultado no dependa de qué
-    versión de tasks.py tenga ese commit.
+    Las mediciones se intercalan (base, actual, base, actual...) y se comparan los mejores tiempos de cada lado:
+    una sola medición contra otra daba ~16 % de falsos rojos sobre código idéntico. El código del commit base se
+    mide con el comando de ESTE tasks.py, para que el resultado no dependa de qué versión tenga ese commit. No usa
+    --benchmark-compare, que exige el almacenamiento dentro del directorio de trabajo cuando el machine_info difiere.
     """
     base_sha = os.environ.get("BENCH_BASE_SHA", "")
     with tempfile.TemporaryDirectory() as tmp:
-        storage = Path(tmp) / "storage"
         worktree = Path(tmp) / "base"
+        measured = None
         try:
             if checkout_base(base_sha, worktree):
-                print(f"\nMidiendo el commit base {base_sha[:7]} para tener una línea base de esta máquina...")
-                measured = subprocess.run(
-                    [*bench_command(storage), "--benchmark-save=baseline"], cwd=worktree / ROOT.name
-                )
-                if measured.returncode != 0:
-                    sys.exit(measured.returncode)
+                print(f"\nMidiendo el commit base {base_sha[:7]} y el actual, intercalados, en esta máquina...")
+                use_current_benchmarks(worktree / ROOT.name)
+                measured = interleaved_minimums(worktree / ROOT.name, Path(tmp), BENCH_ROUNDS)
             else:
                 print(f"\n⚠ Sin commit base utilizable ({base_sha or 'BENCH_BASE_SHA vacío'}): se mide sin comparar.")
-            run_bench(storage)
+        except BaseNotComparable as error:
+            print(error)
+            print("\n⚠ Los benchmarks actuales no corren sobre el commit base: se mide sin comparar.")
+        except BenchError as error:
+            print(error)
+            sys.exit("Los benchmarks no pudieron correr.")
         finally:
             git("worktree", "remove", "--force", str(worktree))
             git("worktree", "prune")
+        if measured is None:
+            run_bench(Path(tmp) / "storage")
+            return
+    regressed = report_comparison(compare_minimums(*measured), BENCH_THRESHOLD)
+    if regressed:
+        sys.exit(f"\nRegresión de rendimiento mayor a {BENCH_THRESHOLD:.0%} en: {', '.join(regressed)}")
 
 
 @task("Perfiles de cProfile y pyinstrument sobre benchmark.py; no bloquea, deja los reportes en reports/")
@@ -392,6 +473,25 @@ def _summary_audit(reports: Path) -> list[Row]:
 
 
 def _summary_benchmarks(reports: Path) -> str:
+    comparison = reports / "benchmark-comparison.json"
+    if comparison.exists():
+        data = json.loads(comparison.read_text(encoding="utf-8"))
+        lines = [
+            "",
+            f"**Benchmarks** (mejor de {data['rondas']} mediciones intercaladas; umbral {data['umbral']:.0%})",
+            "",
+        ]
+        lines += ["| Prueba | base (ms) | actual (ms) | actual / base |", "|---|---:|---:|---:|"]
+        for item in data["benchmarks"]:
+            flag = " ⚠" if item["ratio"] > 1 + data["umbral"] else ""
+            cells = (
+                item["name"],
+                f"{item['base_min_ms']:.3f}",
+                f"{item['actual_min_ms']:.3f}",
+                f"{item['ratio']:.2f}{flag}",
+            )
+            lines.append("| " + " | ".join(cells) + " |")
+        return "\n".join(lines)
     benchmark = reports / "benchmark.json"
     if not benchmark.exists():
         return ""
