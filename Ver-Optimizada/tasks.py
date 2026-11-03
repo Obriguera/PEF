@@ -15,9 +15,13 @@ Ejemplos:
 """
 
 import argparse
+import json
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -187,7 +191,7 @@ BENCH_STORAGE = ROOT / "metrics" / "benchmarks"
 BENCH_MAX_REGRESSION = "min:25%"
 
 
-def bench_command() -> list[str]:
+def bench_command(storage: Path) -> list[str]:
     """Comando base de pytest-benchmark: solo los benchmarks, con las mediciones activadas."""
     return [
         PY,
@@ -196,23 +200,23 @@ def bench_command() -> list[str]:
         "tests/test_benchmarks.py",
         "--benchmark-enable",
         "--benchmark-only",
-        f"--benchmark-storage={BENCH_STORAGE}",
+        f"--benchmark-storage={storage}",
         "--benchmark-columns=min,mean,median,stddev,rounds",
     ]
 
 
-def has_baseline() -> bool:
-    """¿Hay una línea base guardada para esta plataforma y esta versión de Python?"""
+def has_baseline(storage: Path) -> bool:
+    """¿Hay una línea base guardada en ``storage`` para esta plataforma y esta versión de Python?"""
     from pytest_benchmark.utils import get_machine_id  # disponible después de `install`
 
-    return any((BENCH_STORAGE / get_machine_id()).glob("*.json"))
+    return any((storage / get_machine_id()).glob("*.json"))
 
 
-@task("Benchmarks: falla si algo empeora más de 25 % (mínimo) respecto de la última línea base")
-def bench() -> None:
+def run_bench(storage: Path) -> None:
+    """Mide y, si hay línea base en ``storage``, falla ante una regresión mayor al umbral."""
     REPORTS.mkdir(exist_ok=True)
-    command = [*bench_command(), f"--benchmark-json={REPORTS / 'benchmark.json'}"]
-    if has_baseline():
+    command = [*bench_command(storage), f"--benchmark-json={REPORTS / 'benchmark.json'}"]
+    if has_baseline(storage):
         run(*command, "--benchmark-compare", f"--benchmark-compare-fail={BENCH_MAX_REGRESSION}")
     else:
         # pytest-benchmark aborta con un error de uso si se pide --benchmark-compare-fail sin línea base
@@ -222,9 +226,56 @@ def bench() -> None:
         run(*command)
 
 
+@task("Benchmarks: falla si algo empeora más de 25 % (mínimo) respecto de la última línea base")
+def bench() -> None:
+    run_bench(BENCH_STORAGE)
+
+
 @task("Benchmarks: guarda una nueva línea base en metrics/benchmarks/ (tras una mejora o al cambiar de máquina)")
 def bench_save() -> None:
-    run(*bench_command(), "--benchmark-save=baseline")
+    run(*bench_command(BENCH_STORAGE), "--benchmark-save=baseline")
+
+
+def git(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+
+
+def checkout_base(sha: str, destination: Path) -> bool:
+    """Crea un worktree del commit ``sha`` en ``destination``; False si no se puede usar como base."""
+    if not sha or set(sha) == {"0"}:  # sin commit anterior (primer push, rama nueva)
+        return False
+    if git("cat-file", "-e", f"{sha}^{{commit}}").returncode != 0:
+        return False
+    if git("worktree", "add", "--detach", str(destination), sha).returncode != 0:
+        return False
+    return (destination / ROOT.name / "tests" / "test_benchmarks.py").exists()
+
+
+@task("Benchmarks: compara contra el commit BENCH_BASE_SHA, medido en esta misma máquina")
+def bench_vs_base() -> None:
+    """Una línea base de otra máquina no sirve: se mide el commit base y el actual seguidos, en el mismo equipo.
+
+    El código del commit base se mide con el comando de ESTE tasks.py, para que el resultado no dependa de qué
+    versión de tasks.py tenga ese commit.
+    """
+    base_sha = os.environ.get("BENCH_BASE_SHA", "")
+    with tempfile.TemporaryDirectory() as tmp:
+        storage = Path(tmp) / "storage"
+        worktree = Path(tmp) / "base"
+        try:
+            if checkout_base(base_sha, worktree):
+                print(f"\nMidiendo el commit base {base_sha[:7]} para tener una línea base de esta máquina...")
+                measured = subprocess.run(
+                    [*bench_command(storage), "--benchmark-save=baseline"], cwd=worktree / ROOT.name
+                )
+                if measured.returncode != 0:
+                    sys.exit(measured.returncode)
+            else:
+                print(f"\n⚠ Sin commit base utilizable ({base_sha or 'BENCH_BASE_SHA vacío'}): se mide sin comparar.")
+            run_bench(storage)
+        finally:
+            git("worktree", "remove", "--force", str(worktree))
+            git("worktree", "prune")
 
 
 @task("Perfiles de cProfile y pyinstrument sobre benchmark.py; no bloquea, deja los reportes en reports/")
@@ -279,6 +330,103 @@ def audit() -> None:
 @task("Sphinx: genera la referencia de la API desde los docstrings (falla ante advertencias)")
 def docs_sphinx() -> None:
     run(PY, "-m", "sphinx", "-W", "--keep-going", "-b", "html", "docs", "docs/_build/html")
+
+
+# ----------------------------------------------------------------- resumen
+
+Row = tuple[str, str]
+
+
+def _summary_tests(reports: Path) -> list[Row]:
+    junit = reports / "junit.xml"
+    if not junit.exists():
+        return []
+    root = ET.parse(junit).getroot()
+    suite = root if root.tag == "testsuite" else root.find("testsuite")
+    if suite is None:
+        return []
+    failed = int(suite.get("failures", 0)) + int(suite.get("errors", 0))
+    return [("Pruebas", f"{suite.get('tests')} ejecutadas, {failed} fallidas, {suite.get('skipped', 0)} omitidas")]
+
+
+def _summary_coverage(reports: Path) -> list[Row]:
+    xml = reports / "coverage.xml"
+    if not xml.exists():
+        return []
+    root = ET.parse(xml).getroot()
+    hits = int(root.get("lines-covered", 0)) + int(root.get("branches-covered", 0))
+    total = int(root.get("lines-valid", 0)) + int(root.get("branches-valid", 0))
+    return [("Cobertura (líneas y ramas)", f"{100 * hits / total:.2f} %" if total else "sin datos")]
+
+
+def _summary_complexity(reports: Path) -> list[Row]:
+    radon = reports / "radon-cc.json"
+    if not radon.exists():
+        return []
+    blocks = [block for file_blocks in json.loads(radon.read_text(encoding="utf-8")).values() for block in file_blocks]
+    if not blocks:
+        return []
+    worse = sum(block["rank"] != "A" for block in blocks)
+    average = sum(block["complexity"] for block in blocks) / len(blocks)
+    highest = max(block["complexity"] for block in blocks)
+    return [("Complejidad ciclomática", f"promedio {average:.2f}, máxima {highest}, {worse} bloques peores que A")]
+
+
+def _summary_findings(reports: Path) -> list[Row]:
+    rows: list[Row] = []
+    for name, label in (("bandit.sarif", "Bandit (código inseguro)"), ("gitleaks.sarif", "Gitleaks (secretos)")):
+        sarif = reports / name
+        if sarif.exists():
+            results = sum(len(run_["results"]) for run_ in json.loads(sarif.read_text(encoding="utf-8"))["runs"])
+            rows.append((label, f"{results} hallazgos"))
+    return rows
+
+
+def _summary_audit(reports: Path) -> list[Row]:
+    rows: list[Row] = []
+    for report in sorted(reports.glob("pip-audit-*.json")):
+        dependencies = json.loads(report.read_text(encoding="utf-8"))["dependencies"]
+        vulns = sum(len(dependency.get("vulns", [])) for dependency in dependencies)
+        rows.append((f"pip-audit ({report.stem.removeprefix('pip-audit-')})", f"{vulns} vulnerabilidades"))
+    return rows
+
+
+def _summary_benchmarks(reports: Path) -> str:
+    benchmark = reports / "benchmark.json"
+    if not benchmark.exists():
+        return ""
+    lines = ["", "**Benchmarks**", "", "| Prueba | mínimo (ms) | media (ms) |", "|---|---:|---:|"]
+    for item in json.loads(benchmark.read_text(encoding="utf-8"))["benchmarks"]:
+        stats = item["stats"]
+        lines.append(f"| {item['name']} | {stats['min'] * 1000:.2f} | {stats['mean'] * 1000:.2f} |")
+    return "\n".join(lines)
+
+
+def build_summary(reports: Path) -> str:
+    """Resumen en Markdown de los reportes que existan en ``reports``; omite los que faltan."""
+    rows = [
+        *_summary_tests(reports),
+        *_summary_coverage(reports),
+        *_summary_complexity(reports),
+        *_summary_findings(reports),
+        *_summary_audit(reports),
+    ]
+    benchmarks = _summary_benchmarks(reports)
+    if not rows and not benchmarks:
+        return "Sin reportes.\n"
+    table = "| Control | Resultado |\n|---|---|\n" + "".join(f"| {control} | {result} |\n" for control, result in rows)
+    return f"{table if rows else ''}{benchmarks}\n"
+
+
+@task("Resumen en Markdown de los reportes de reports/ (en el CI se agrega a $GITHUB_STEP_SUMMARY)")
+def summary() -> None:
+    text = build_summary(REPORTS)
+    target = os.environ.get("GITHUB_STEP_SUMMARY")
+    if target:
+        with open(target, "a", encoding="utf-8") as output:
+            output.write(text)
+    else:
+        print(text)
 
 
 # ------------------------------------------------------------- agregados
