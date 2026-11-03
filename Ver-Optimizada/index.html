@@ -185,6 +185,11 @@
                 })
             });
 
+            if (!response.ok) {
+                // 422: la API rechazó los datos (puntaje fuera de 1-5 o ids no positivos)
+                return alert("No se pudo enviar el voto: el puntaje debe estar entre 1 y 5 y los ids deben ser positivos.");
+            }
+
             const data = await response.json();
             alert(data.mensaje); // Muestra la confirmación de la API
             

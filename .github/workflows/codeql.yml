@@ -1,0 +1,36 @@
+# Análisis estático de seguridad con CodeQL (Code scanning de GitHub).
+# Complementa a Bandit: CodeQL sigue el flujo de datos entre funciones. Política de bloqueo en SECURITY.md.
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: "17 5 * * 1" # lunes: las consultas de CodeQL se actualizan aunque el código no cambie
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analizar Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # subir los resultados a Code scanning
+    steps:
+      # Las acciones se fijan por SHA de commit (una etiqueta puede moverse); Dependabot actualiza los SHA.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: python
+          build-mode: none # Python no necesita compilar
+
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: "/language:python"
