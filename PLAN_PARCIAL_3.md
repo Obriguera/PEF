@@ -52,8 +52,8 @@ README, en la documentación y en las diapositivas.
 | 0. Preparar el repo | Locks con hashes, `pyproject.toml`, `tasks.py`, `.gitignore` | ✅ PR #1, tag `parcial3-fase0` |
 | 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2, tag `parcial3-fase1` |
 | 2. Rendimiento y memoria | Benchmarks con pytest-benchmark y línea base, tests de memoria con tracemalloc, tarea de profiling; `spawn` en el `ProcessPoolExecutor`, contrapresión y `records_processed` real | ✅ en PR (tag `parcial3-fase2` tras el merge) |
-| 3. Seguridad | Bandit, Gitleaks y pip-audit en el CI, Dependabot, CodeQL, `SECURITY.md` con la política y las excepciones | ⏳ (Bandit, Gitleaks y pip-audit ya están en `tasks.py`) |
-| 4. Pipeline | `.github/workflows/ci.yml` + protección de `master` (la configura el dueño del repo). El job de rendimiento tiene que generar la línea base **en el mismo runner** (`bench-save` sobre la rama base y después `bench` sobre el PR): la versionada en `metrics/benchmarks/` se midió en otra máquina | ⏳ |
+| 3. Seguridad | `SECURITY.md` (política por severidad, registro de excepciones, modelo de amenazas), excepciones de Bandit y pip-audit, validación de entradas de la API, workflow de CodeQL y Dependabot | ✅ en PR (tag `parcial3-fase3` tras el merge). CodeQL y Dependabot **sin ejecutar** en GitHub |
+| 4. Pipeline | `.github/workflows/ci.yml` (con `fetch-depth: 0` para Gitleaks, y subiendo los SARIF a Code scanning) + protección de `master` (la configura el dueño del repo). El job de rendimiento tiene que generar la línea base **en el mismo runner** (`bench-save` sobre la rama base y después `bench` sobre el PR): la versionada en `metrics/benchmarks/` se midió en otra máquina | ⏳ |
 | 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
 | 6. Evolución entre versiones | `evolucion/medir.py` (subcomandos `medir`, `graficar`, `todo`), métricas en JSON, gráficos PNG para el README, MkDocs y las diapositivas | ⏳ |
 
@@ -75,6 +75,25 @@ README, en la documentación y en las diapositivas.
 - **El lock tenía una combinación rota:** `pytest-benchmark 5.3.0` con `pytest 9.2` (falla con
   `AttributeError: _nodeid`). Se exige `pytest-benchmark>=5.3.1`, publicada el 2026-11-01 (un día antes de
   adoptarla). Alternativa más conservadora si se prefiere esperar: `pytest<9.2`.
+
+### Decisiones y hallazgos de la Fase 3
+
+- **Los controles se probaron con casos positivos, no solo con el repo limpio.** Gitleaks detecta un token con
+  formato de GitHub aunque un commit posterior lo borre; Bandit rechaza `shell=True` y `pickle.loads`; pip-audit
+  falla con `jinja2 2.10` (12 avisos) y pasa al ignorarlos. El repo real no tiene hallazgos.
+- **Gitleaks escanea 21 de los 29 commits:** los otros 8 son merges sin cambios propios.
+- **Los 3 hallazgos de Bandit (B311) son falsos positivos** (datos sintéticos): se marcan con `# nosec B311` y
+  se registran en `SECURITY.md`. Las excepciones de pip-audit llevan vencimiento (`AUDIT_EXCEPTIONS`).
+- **Lo que Bandit no ve, y se encontró revisando los endpoints:** `records` sin tope (un pedido anónimo podía
+  agotar disco y CPU), usuario inexistente → HTTP 500, y puntajes arbitrarios en `POST /api/rate`. Se validan
+  con 12 tests escritos antes del cambio. `index.html` mostraba "undefined" ante un 422 y se corrigió.
+- **Las acciones de GitHub se fijan por SHA de commit.** Cuidado al resolverlos: en etiquetas anotadas,
+  `git ls-remote` muestra primero el SHA del objeto-etiqueta; el del commit es el de la línea `^{}`.
+- **Pendiente de validar en GitHub:** el workflow de CodeQL y `dependabot.yml` solo se validaron
+  estructuralmente (no se pudo correr `actionlint`). Dependabot puede proponer cambios sin hashes en los locks;
+  el CI los rechazaría de forma segura.
+- **Pendiente del dueño del repo** (Settings): Dependabot alerts y security updates, secret scanning con push
+  protection, private vulnerability reporting y protección de `master` (lista en `SECURITY.md`).
 
 ### Pipeline previsto (Fase 4)
 

@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -53,7 +54,7 @@ def tool(name: str) -> str:
     """Devuelve el ejecutable de una herramienta externa (no pip) o falla con un mensaje claro."""
     path = shutil.which(name)
     if path is None:
-        sys.exit(f"'{name}' no está instalado. Ver la sección de mantenimiento de la documentación.")
+        sys.exit(f"'{name}' no está instalado. Ver «Cómo correr los controles» en SECURITY.md.")
     return path
 
 
@@ -236,9 +237,26 @@ def profile() -> None:
 # -------------------------------------------- dependencias y documentación
 
 
+# Excepciones documentadas de pip-audit: id de la vulnerabilidad -> (justificación, vence AAAA-MM-DD).
+# Cada una debe figurar también en el registro de SECURITY.md. Una excepción vencida hace fallar la auditoría,
+# para que no quede vigente por olvido.
+AUDIT_EXCEPTIONS: dict[str, tuple[str, str]] = {}
+
+
+def audit_ignore_args(exceptions: dict[str, tuple[str, str]], today: date) -> list[str]:
+    """Argumentos --ignore-vuln de las excepciones vigentes; corta si alguna venció."""
+    args: list[str] = []
+    for vuln_id, (_reason, expires) in exceptions.items():
+        if date.fromisoformat(expires) < today:
+            sys.exit(f"La excepción de pip-audit {vuln_id} venció el {expires}: revisarla en SECURITY.md.")
+        args += ["--ignore-vuln", vuln_id]
+    return args
+
+
 @task("pip-audit: vulnerabilidades conocidas en las dependencias fijadas")
 def audit() -> None:
     REPORTS.mkdir(exist_ok=True)
+    ignore = audit_ignore_args(AUDIT_EXCEPTIONS, date.today())
     for lockfile in ("requirements.txt", "requirements-dev.txt"):
         report = REPORTS / f"pip-audit-{Path(lockfile).stem}.json"
         run(
@@ -248,6 +266,7 @@ def audit() -> None:
             "--strict",
             "--require-hashes",
             "--disable-pip",
+            *ignore,
             "-r",
             lockfile,
             "-f",
