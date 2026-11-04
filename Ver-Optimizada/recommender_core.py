@@ -164,3 +164,8 @@ class _Neighbors:
         if denominator > 0:
             return numerator / denominator
         return None
+
+
+def _demo_demasiados_parametros(a: int, b: int, c: int, d: int, e: int, f: int, g: int) -> int:
+    """Función de la demo: tiene 7 parámetros y el límite es 5, así que Calidad estática la rechaza."""
+    return a + b + c + d + e + f + g
