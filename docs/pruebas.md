@@ -1,6 +1,6 @@
 # Pruebas
 
-La suite tiene **68 tests** y una cobertura del **100 %** (líneas y ramas) sobre el código de la aplicación; el umbral
+La suite tiene **80 tests** y una cobertura del **100 %** (líneas y ramas) sobre el código de la aplicación; el umbral
 que exige el CI es 80 %. Corre en Python 3.11, 3.12 y 3.13.
 
 ```bash
@@ -24,7 +24,7 @@ python -m pytest tests/test_api.py -q         # un solo archivo
 | `test_large_file.py` | 7 | Lectura por lotes, escritura, *worker*, paralelo contra secuencial y la demostración. |
 | `test_memory.py` | 3 | El pico de memoria no crece con el tamaño del archivo (ver abajo). |
 | `test_benchmarks.py` | 7 | Benchmarks; se miden con `python tasks.py bench` (ver [Rendimiento](rendimiento.md)). |
-| `test_tasks.py` | 21 | Las piezas de `tasks.py` que usa el CI: resumen, comparación de benchmarks y excepciones. |
+| `test_tasks.py` | 33 | Las piezas de `tasks.py` que usa el CI: resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces. |
 
 ## Pruebas de caracterización (*golden master*)
 
@@ -52,6 +52,35 @@ de distinto tamaño), así que no depende de la máquina:
 
 El último valida el `dtype`: en `float32` la teoría da 2,29 MB y en `float64` serían ~4,6 MB, así que el límite de
 3 MB detecta una regresión de tipo.
+
+## Casos de prueba y resultados
+
+Casos representativos, con lo que se espera de cada uno:
+
+| Caso | Resultado esperado |
+|---|---|
+| Usuario sin calificaciones (norma cero) | Similitud 0 con todos; no recibe recomendaciones |
+| Usuario inexistente | `KeyError` en el núcleo; **404** en la API |
+| CSV con filas vacías, con menos de 3 columnas o sin *timestamp* | Se omiten las dos primeras; la tercera es válida |
+| Archivo inexistente al leer por lotes | `FileNotFoundError` |
+| Puntaje 0,99 · 5,01 · −3 · 1e308 | **422** y no se agrega nada; 1,0 y 5,0 se aceptan |
+| `records` = 0, −5 o 1.000.001 | **422** y no se crea ningún archivo |
+| Procesamiento paralelo contra secuencial | Mismos conteos; las sumas coinciden con tolerancia |
+| Caché de popularidad | Mismo objeto mientras no se invalide; uno nuevo e igual después |
+| Memoria de la lectura y del paralelo, con archivos de 50.000 y 200.000 filas | No crece con el tamaño del archivo |
+| Mismos datos, dos ejecuciones | Misma salida, bit a bit (*golden master*) |
+
+**Resultados de la última verificación completa:**
+
+| Control | Resultado |
+|---|---|
+| Tests en Python 3.11, 3.12 y 3.13 | 80 de 80 en las tres versiones |
+| Cobertura (líneas y ramas) | 100 % en los cinco módulos de la aplicación; umbral 80 % |
+| Complejidad ciclomática | todas las funciones en rango A (máxima 5) |
+| Tipado | 0 errores de mypy, y el núcleo también con `--strict` |
+
+Cada ejecución del CI repite estos controles y deja `junit.xml` y `coverage.xml` como artefactos (ver
+[Mantenimiento](mantenimiento.md)).
 
 ## Aislamiento
 

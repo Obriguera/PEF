@@ -164,8 +164,12 @@ README, en la documentación y en las diapositivas.
   `unpkg.com` (`mermaid@11`, versión mayor flotante) y consulta la API de GitHub; se desactivaron las tipografías de
   Google Fonts (`font: false`). `unpkg.com` está bloqueado en el entorno de desarrollo, así que la verificación usó
   el mismo paquete (11.17.2) desde el registro de npm.
-- **Enlaces externos y markdownlint no se validan** (el plan original proponía Lychee y markdownlint): los enlaces
-  externos son frágiles en un CI y agregarían un binario más. Los internos sí, en cada build.
+- **Enlaces externos: primero no se validaban, y el enunciado lo contradice.** El plan original proponía Lychee y
+  yo decidí omitirlos por frágiles. Pero el enunciado define el control de documentación como «construcción del
+  sitio **y validez de enlaces**». Se agregó `docs-links` (biblioteca estándar, sin binarios nuevos): solo un 404,
+  un 410 o un dominio inexistente rechazan; un 403, un 429, un error 5xx o un timeout quedan como «no verificables»,
+  porque muchos sitios bloquean a los robots y un falso rojo es peor que un enlace sin verificar. markdownlint no se
+  agregó: el enunciado lo lista como herramienta propuesta, no como requisito.
 - **Material for MkDocs llega a fin de vida el 5/5/2027** (lo anuncia el propio tema); sucesor: Zensical.
 - **Las cifras de la documentación se verificaron contra la fuente:** los ejemplos de la API son respuestas reales de
   `TestClient`, las cuentas de tests salen de `pytest --collect-only`, y se corrigieron dos errores propios antes de
@@ -175,6 +179,43 @@ README, en la documentación y en las diapositivas.
   del repositorio, pero en GitHub Pages la **lectura es pública**. Si el enunciado exige restringir también la
   lectura, hay que usar otra plataforma (por ejemplo, un wiki privado o GitHub Enterprise Cloud).
 - **Pendiente del dueño del repo:** Settings > Pages > Source «GitHub Actions» y la variable `PUBLISH_DOCS = true`.
+
+### Auditoría contra el enunciado (`Parcial-3.pdf`)
+
+Al incorporar el enunciado real (hasta entonces se trabajó con un resumen) se comparó cada requisito con su evidencia.
+
+**Brechas encontradas y cerradas:**
+
+| Brecha | Qué decía el enunciado | Qué se hizo |
+|---|---|---|
+| Tamaño de las funciones | Complejidad = «ciclomática **y tamaño de las funciones**»; solo se medía la primera | Reglas de Ruff `PLR0915` y `PLR0913` dentro de `complexity`, con límites medidos (la función más grande tenía 43 sentencias: se dividió; hoy el máximo es 23). Prueba negativa: una función de 35 sentencias y 7 parámetros es rechazada |
+| Validez de enlaces | Documentación = «construcción del sitio **y validez de enlaces**»; solo se validaban los internos | `docs-links` (ver arriba), con 12 tests contra un servidor HTTP local |
+| Orden del pipeline | «Dejar las mediciones más costosas para las etapas posteriores» | El perfilado pasa a depender de las pruebas |
+| «Casos de prueba y resultados» | Pruebas = estrategia, casos **y resultados** | Sección con casos representativos y los resultados verificados |
+| «Configuración» | Instalación = dependencias, **configuración** y comandos | Sección con todos los parámetros y dónde cambiarlos |
+| «Problema que resuelve» | Funcional = problema, alcance y requisitos | Sección propia |
+| Cifras viejas | — | El README decía 35 tests; son 80 |
+
+**Cubierto con evidencia:** las 9 secciones de documentación; GitHub Actions; las 11 filas de la matriz de controles
+(cada una con herramienta, comando, reporte y criterio); los 6 requisitos de seguridad (código, dependencias,
+secretos, reporte SARIF y JSON, política por severidad, registro de excepciones); las 9 condiciones de rechazo; y que
+los benchmarks y la memoria usen tolerancia, repetición y una línea base («no todos los controles deben usar el mismo
+criterio»).
+
+**Interpretaciones que conviene conocer:**
+
+- «Control de acceso … **entre los integrantes del equipo**» es sobre quién puede **editar**, no leer: Markdown en Git
+  figura entre las opciones del enunciado, y los permisos del repositorio y la revisión de los PR lo cubren. La
+  lectura pública de Pages no contradice el enunciado. Lo que sí falta decidir: en qué repositorio vive la
+  documentación (el «lugar compartido») y que **los dos integrantes tengan permiso de escritura** en él.
+- «Ante cada push y cada pull request **hacia la rama principal**»: se leyó como push a `master` y PR a `master`. Un
+  push a una rama sin PR no dispara el CI. Si se leyera «cada push», alcanza con quitar el filtro de ramas.
+- El perfilado no tiene condición de rechazo en la tabla 3.1 del enunciado; su criterio es «se aprueba si genera los
+  reportes», y no bloquea.
+
+**No verificado desde acá:** que la protección de `master` exija el check **Resultado**; que Dependabot abra
+sus pull requests; y que la publicación en Pages funcione (el job de publicación salió *skipped* en la última
+ejecución, lo que indica que `PUBLISH_DOCS` no valía `true` en ese momento).
 
 ### Evolución entre versiones (Fase 6)
 

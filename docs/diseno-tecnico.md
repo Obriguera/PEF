@@ -127,5 +127,7 @@ entre 100.000 y 400.000 filas). Con la contrapresión queda plano en ~9,3 MB.
 | `stream_ratings_in_batches` | O(filas), memoria O(lote) | generador |
 | `process_large_file_parallel` | O(filas / procesos), memoria O(`2 × procesos × lote`) | con contrapresión |
 
-La complejidad **ciclomática** de todas las funciones es A (la máxima es 5, el promedio 2,7), y el CI lo exige.
+La complejidad **ciclomática** de todas las funciones es A (la máxima es 5, el promedio 2,7), y el CI lo exige. También
+se limita el **tamaño**: como máximo 30 sentencias y 5 parámetros por función (la más grande llegó a tener 43 sentencias
+y se dividió; hoy el máximo es 23).
 Ver [Mantenimiento](mantenimiento.md).
