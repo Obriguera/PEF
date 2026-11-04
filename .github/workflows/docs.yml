@@ -1,0 +1,74 @@
+# Publica la documentación (MkDocs) en GitHub Pages cuando se hace merge en master.
+#
+# Requisitos, una sola vez y a cargo del dueño del repositorio (no se pueden configurar desde el código):
+#   1. Settings > Pages > Source: "GitHub Actions".
+#   2. Settings > Secrets and variables > Actions > Variables: PUBLISH_DOCS = true.
+# Sin la variable, el job de construcción igual valida que el sitio compile; solo se omite la publicación.
+#
+# Ojo: en la mayoría de los planes, un sitio de GitHub Pages es PÚBLICO aunque el repositorio sea privado (restringir
+# la lectura requiere GitHub Enterprise Cloud). La edición, en cambio, pasa por los permisos y la revisión del repositorio.
+name: Documentación
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false # no cortar una publicación a la mitad
+
+defaults:
+  run:
+    working-directory: Ver-Optimizada
+
+env:
+  PYTHON_VERSION: "3.13"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+# Acciones fijadas por SHA de commit (una etiqueta puede moverse); Dependabot actualiza los SHA.
+#   actions/checkout              3d3c42e5aac5ba805825da76410c181273ba90b1  v7.0.1
+#   actions/setup-python          6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  v7.1.0
+#   actions/upload-pages-artifact fc324d3547104276b827a68afc52ff2a11cc49c9  v5.0.0
+#   actions/deploy-pages          368f82528645a54fb793d4d04e342629a3f51346  v5.0.1
+
+jobs:
+  construir:
+    name: Construir el sitio
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: Ver-Optimizada/requirements-dev.txt
+      - name: Instalar dependencias (con verificación de hashes)
+        run: python -m pip install --require-hashes -r requirements-dev.txt
+      - name: MkDocs (falla ante cualquier advertencia)
+        run: python tasks.py docs-mkdocs
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/
+
+  publicar:
+    name: Publicar en GitHub Pages
+    needs: construir
+    if: ${{ vars.PUBLISH_DOCS == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write # publicar el sitio
+      id-token: write # que Pages verifique el origen del despliegue
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -413,6 +413,19 @@ def docs_sphinx() -> None:
     run(PY, "-m", "sphinx", "-W", "--keep-going", "-b", "html", "docs", "docs/_build/html")
 
 
+MKDOCS_CONFIG = ROOT.parent / "mkdocs.yml"
+
+
+@task("MkDocs: construye el sitio de documentación en ../site (falla ante cualquier advertencia)")
+def docs_mkdocs() -> None:
+    run(PY, "-m", "mkdocs", "build", "--strict", "-f", str(MKDOCS_CONFIG))
+
+
+@task("MkDocs: sirve la documentación en http://127.0.0.1:8000 con recarga automática")
+def docs_serve() -> None:
+    run(PY, "-m", "mkdocs", "serve", "-f", str(MKDOCS_CONFIG))
+
+
 # ----------------------------------------------------------------- resumen
 
 Row = tuple[str, str]
@@ -538,6 +551,7 @@ def ci() -> None:
     test()
     audit()
     docs_sphinx()
+    docs_mkdocs()
 
 
 def main() -> None:

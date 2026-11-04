@@ -225,3 +225,6 @@ massive_ratings_*.csv
 # Reportes generados por tasks.py y por el CI
 Ver-Optimizada/reports/
 .benchmarks/
+
+# Sitio generado por MkDocs (python tasks.py docs-mkdocs)
+site/

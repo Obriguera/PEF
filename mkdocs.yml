@@ -1,0 +1,100 @@
+# Documentación técnica de Ver-Optimizada (MkDocs Material).
+# Se construye con `python tasks.py docs-mkdocs` (falla ante cualquier advertencia) y se publica en GitHub Pages con
+# .github/workflows/docs.yml. La referencia del código sale de los docstrings (mkdocstrings), como en Sphinx.
+site_name: PEF · Motor de recomendaciones de películas
+site_description: Documentación técnica de la versión optimizada (Programación Eficiente, Universidad Blas Pascal)
+site_author: Octavio Briguera y Ricardo Lagoria
+site_url: https://riclagoria.github.io/PEF/
+repo_url: https://github.com/RicLagoria/PEF
+repo_name: RicLagoria/PEF
+edit_uri: edit/master/docs/ # el botón "editar" abre un pull request: la colaboración pasa por la revisión del repositorio
+
+docs_dir: docs
+site_dir: site
+strict: true
+
+theme:
+  name: material
+  language: es
+  font: false # tipografías del sistema: sin pedidos a Google Fonts en cada visita
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo claro
+
+# Con strict, estas advertencias hacen fallar el build: un enlace o un ancla rotos no llegan a master.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      # Anclas como las de GitHub (conservan tildes y eñes): así los enlaces internos de README.md y SECURITY.md
+      # funcionan igual en GitHub y en este sitio.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets:
+      base_path: !relative $config_dir
+      check_paths: true
+
+plugins:
+  - search:
+      lang: es
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [Ver-Optimizada]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            heading_level: 3
+            members_order: source
+            show_signature_annotations: true
+            separate_signature: true
+
+nav:
+  - Inicio: index.md
+  - Funcional: funcional.md
+  - Arquitectura: arquitectura.md
+  - Instalación: instalacion.md
+  - Diseño técnico: diseno-tecnico.md
+  - API:
+      - Endpoints: api.md
+      - Referencia del código: referencia.md
+  - Pruebas: pruebas.md
+  - Rendimiento: rendimiento.md
+  - Seguridad: seguridad.md
+  - Mantenimiento: mantenimiento.md

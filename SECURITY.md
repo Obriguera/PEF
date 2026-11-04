@@ -92,6 +92,8 @@ la API fuera de una red local.
 | CORS abierto (`allow_origins=["*"]`) | La API no usa cookies ni credenciales, así que no se puede abusar de una sesión ajena |
 | `GET /api/large-files/process` tiene efectos secundarios (escribe archivos) y usa nombres fijos en el directorio actual | Es la demostración del Punto 3. Dos pedidos simultáneos pueden pisarse el archivo |
 | `POST /api/rate` agrega la calificación al ranking de popularidad, pero no recalcula las similitudes | Comportamiento heredado del Parcial 1 |
+| El sitio de documentación carga **Mermaid desde `unpkg.com`** (versión mayor flotante `@11`) en cada visita, y consulta la API pública de GitHub para mostrar datos del repositorio | Es el comportamiento por defecto del tema. Un tercero comprometido podría ejecutar código en el navegador de quien lea la documentación; no hay credenciales ni datos sensibles en el sitio. La salida sería incluir Mermaid dentro del sitio |
+| La documentación publicada en GitHub Pages es **pública** (la lectura no tiene control de acceso en la mayoría de los planes) | El repositorio es público; solo se publica documentación técnica. La edición sí pasa por permisos y revisión |
 
 ### Lo que estos controles no cubren
 
