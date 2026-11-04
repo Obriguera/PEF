@@ -41,6 +41,13 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "C90"]
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
+# Tamaño de las funciones. Lo verifica `python tasks.py complexity` con las reglas PLR0915 y PLR0913, junto con la
+# complejidad ciclomática. Límites medidos: la función más grande tenía 43 sentencias (se dividió en helpers); hoy el
+# máximo es 23. Y el máximo de parámetros es 5, el estándar de Pylint.
+[tool.ruff.lint.pylint]
+max-statements = 30
+max-args = 5
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
 

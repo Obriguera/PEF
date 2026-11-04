@@ -10,6 +10,17 @@ parecidos** a los suyos y le recomienda las que todavía no vio.
   su similitud con quien pide la recomendación.
 - **Salida:** el Top 5 de películas recomendadas.
 
+## Problema que resuelve
+
+Dado un usuario, el sistema decide qué películas **todavía no vistas** le conviene mirar, usando las calificaciones de
+las personas con gustos parecidos.
+
+El desafío no es la idea sino la **escala**. La operación central, comparar a cada usuario con todos los demás, crece
+con el cuadrado de la cantidad de usuarios: con 2.000 usuarios son unos 4 millones de comparaciones, y la primera
+implementación tardaba casi 4 minutos en una sola recomendación. El objetivo del proyecto es que el sistema escale:
+encontrar el cuello de botella **midiendo**, eliminarlo y verificar que los resultados no cambien (ver
+[Diseño técnico](diseno-tecnico.md)).
+
 ## Quién lo usa
 
 | Actor | Qué hace |

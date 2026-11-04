@@ -1,9 +1,14 @@
 """Tests de las piezas de tasks.py que usa el CI: el resumen, el commit base de los benchmarks y las excepciones."""
 
 import json
+import socket
 import subprocess
+import threading
+import urllib.error
 from datetime import date
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -233,3 +238,121 @@ def test_el_resumen_prefiere_la_comparacion_con_el_commit_base(tmp_path):
     text = tasks.build_summary(tmp_path)
     assert "mejor de 3 mediciones intercaladas" in text
     assert "| t | 1.000 | 1.400 | 1.40 ⚠ |" in text
+
+
+# ------------------------------------------------------------------ enlaces de la documentación
+
+
+@pytest.fixture
+def servidor_http(monkeypatch):
+    """Un servidor HTTP local que responde con el código indicado en la ruta (/200, /404, /503...)."""
+    for variable in ("no_proxy", "NO_PROXY"):
+        monkeypatch.setenv(variable, "*")  # que urllib no use el proxy del entorno para 127.0.0.1
+
+    class Manejador(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(int(self.path.strip("/") or 200))
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    servidor = ThreadingHTTPServer(("127.0.0.1", 0), Manejador)
+    hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
+    hilo.start()
+    yield f"http://127.0.0.1:{servidor.server_port}"
+    servidor.shutdown()
+    servidor.server_close()
+
+
+def test_extract_links_toma_solo_enlaces_externos_de_markdown():
+    texto = """
+[uno](https://uno.org/pagina#ancla) y <https://dos.org/x>. ![img](https://img.org/a.png)
+[interno](otra-pagina.md) [local](http://localhost:8000/docs) [ancla](#seccion)
+`https://en-codigo.org`
+
+```bash
+git clone https://en-bloque.org/repo.git
+```
+"""
+    assert tasks.extract_links(texto) == {"https://uno.org/pagina", "https://dos.org/x", "https://img.org/a.png"}
+
+
+@pytest.mark.parametrize(
+    ("ruta", "veredicto"),
+    [
+        ("200", "ok"),
+        ("404", "roto"),
+        ("410", "roto"),
+        ("403", "inconcluso"),  # muchos sitios bloquean a los robots: no se puede verificar
+        ("429", "inconcluso"),  # límite de pedidos: tampoco prueba que el enlace esté roto
+        ("503", "inconcluso"),  # error transitorio del servidor, aun después de reintentar
+    ],
+)
+def test_check_url_clasifica_la_respuesta(servidor_http, ruta, veredicto):
+    assert tasks.check_url(f"{servidor_http}/{ruta}", attempts=2, delay=0)[0] == veredicto
+
+
+def test_un_servidor_inalcanzable_no_se_considera_enlace_roto():
+    # Un puerto cerrado puede ser un corte transitorio de red: no es evidencia de un enlace roto.
+    assert tasks.check_url("http://127.0.0.1:9/", attempts=2, delay=0)[0] == "inconcluso"
+
+
+def test_un_dominio_que_no_resuelve_se_distingue_de_un_error_de_servidor(monkeypatch):
+    def sin_dns(*args, **kwargs):
+        raise urllib.error.URLError(socket.gaierror(-2, "Name or service not known"))
+
+    monkeypatch.setattr(tasks.urllib.request, "urlopen", sin_dns)
+    assert tasks.check_url("https://no-existe.invalid/", attempts=2, delay=0)[0] == "dns"
+
+
+def test_judge_links_un_dominio_inexistente_solo_es_roto_si_hay_conexion():
+    resultados = {"https://a.org": ("ok", "HTTP 200"), "https://b.invalid": ("dns", "no resuelve")}
+    assert tasks.judge_links(resultados)["https://b.invalid"][0] == "roto"
+    sin_conexion = {"https://b.invalid": ("dns", "no resuelve"), "https://c.invalid": ("dns", "no resuelve")}
+    assert {veredicto for veredicto, _ in tasks.judge_links(sin_conexion).values()} == {"inconcluso"}
+
+
+def veredictos_impresos(salida):
+    """{host: veredicto} de la tabla que imprime docs_links; el host se obtiene parseando la URL de cada fila."""
+    filas = {}
+    for linea in salida.splitlines():
+        campos = linea.split()
+        urls = [urlparse(campo) for campo in campos if urlparse(campo).scheme in ("http", "https")]
+        if urls:
+            filas[urls[0].netloc] = campos[0]  # la primera columna de cada fila es el veredicto
+    return filas
+
+
+def test_veredictos_impresos_distingue_hosts_que_solo_se_parecen():
+    # Un host que contiene a otro como prefijo o como parámetro no debe confundirse con él.
+    salida = (
+        "  roto       HTTP 404   https://roto.org.evil.com/x  (README.md)\n"
+        "  ok         HTTP 200   https://evil.com/?u=https://roto.org  (README.md)\n"
+    )
+    assert veredictos_impresos(salida) == {"roto.org.evil.com": "roto", "evil.com": "ok"}
+
+
+def test_docs_links_falla_con_un_enlace_roto_y_avisa_de_los_no_verificables(tmp_path, monkeypatch, capsys):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "Ver-Optimizada").mkdir()
+    (tmp_path / "README.md").write_text("[bueno](https://bueno.org) [roto](https://roto.org)", encoding="utf-8")
+    (tmp_path / "docs" / "a.md").write_text("[bloqueado](https://bloqueado.org)", encoding="utf-8")
+    monkeypatch.setattr(tasks, "ROOT", tmp_path / "Ver-Optimizada")
+    veredictos = {"https://bueno.org": ("ok", "HTTP 200"), "https://roto.org": ("roto", "HTTP 404")}
+    monkeypatch.setattr(tasks, "check_url", lambda url: veredictos.get(url, ("inconcluso", "HTTP 403")))
+    with pytest.raises(SystemExit, match="1 enlace"):
+        tasks.docs_links()
+    salida = capsys.readouterr().out
+    # Se parsea la tabla impresa y se compara el mapeo completo por igualdad exacta, sin buscar URLs como subcadena.
+    assert veredictos_impresos(salida) == {"bueno.org": "ok", "roto.org": "roto", "bloqueado.org": "inconcluso"}
+    assert "3 enlaces externos en 2 archivos" in salida
+
+
+def test_docs_links_pasa_si_solo_hay_enlaces_no_verificables(tmp_path, monkeypatch, capsys):
+    (tmp_path / "Ver-Optimizada").mkdir()
+    (tmp_path / "README.md").write_text("[bloqueado](https://bloqueado.org)", encoding="utf-8")
+    monkeypatch.setattr(tasks, "ROOT", tmp_path / "Ver-Optimizada")
+    monkeypatch.setattr(tasks, "check_url", lambda url: ("inconcluso", "HTTP 403"))
+    tasks.docs_links()  # no falla
+    assert "1 enlace(s) no se pudieron verificar" in capsys.readouterr().out

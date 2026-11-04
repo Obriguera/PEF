@@ -48,6 +48,23 @@ uvicorn main:app --reload --port 8000
   `http://localhost:8000/docs`.
 - La interfaz web se abre con `index.html` en el navegador y consume la API en `http://localhost:8000/api`.
 
+## Configuración
+
+El sistema **no usa variables de entorno ni archivos de configuración propios**: sus parámetros son constantes en el
+código, y las herramientas de calidad se configuran en `pyproject.toml`.
+
+| Qué | Dónde | Valor |
+|---|---|---|
+| Puerto y servidor | Argumentos de `uvicorn` | `--port 8000` (ver arriba) |
+| URL de la API que usa la web | `API_BASE_URL` en `index.html` | `http://localhost:8000/api` |
+| Orígenes permitidos (CORS) | `main.py` | todos (`*`): ver [Seguridad](seguridad.md) |
+| Límites de entrada | `MAX_RECORDS`, `MIN_RATING`, `MAX_RATING` en `main.py` | 1.000.000 registros; puntaje de 1 a 5 |
+| Buffer, lote y lotes en vuelo | `DEFAULT_BUFFER_SIZE`, `DEFAULT_BATCH_SIZE` y `MAX_IN_FLIGHT_FACTOR` en `large_file_handler.py` | 64 KB, 25.000 filas, 2 por proceso |
+| Pruebas, cobertura, estilo, tipos y seguridad | `pyproject.toml` | umbral de cobertura 80 %, línea de 119 caracteres, complejidad máxima A, 30 sentencias y 5 parámetros por función |
+
+Los archivos `massive_ratings_*.csv` que generan la demostración y el endpoint de archivos grandes se escriben en el
+**directorio actual** y están en el `.gitignore`.
+
 ## Verificar la instalación
 
 ```bash

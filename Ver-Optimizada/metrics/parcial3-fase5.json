@@ -23,7 +23,7 @@
   "cobertura": {
     "total": 100.0,
     "umbral": 80,
-    "tests": 68,
+    "tests": 81,
     "por_modulo": {
       "analysis_utils": 100,
       "data_models": 100,
@@ -263,7 +263,6 @@
     "prueba_negativa": "enlace roto + ancla inexistente + archivo huérfano -> 3 advertencias, exit 1",
     "hallazgo": "MkDocs genera anclas sin tildes y GitHub las conserva: se configuró slugify de pymdownx para que coincidan",
     "no_validado": [
-      "enlaces externos",
       "sintaxis de Mermaid en el build",
       "publicación en GitHub Pages"
     ],
@@ -279,6 +278,42 @@
         "variable PUBLISH_DOCS = true"
       ],
       "probado_en_github": false
+    },
+    "enlaces_externos": {
+      "herramienta": "python tasks.py docs-links (biblioteca estándar)",
+      "rechaza": "404, 410 o dominio inexistente",
+      "no_verificable": "403, 429, 5xx, timeout",
+      "enlaces_externos_en_la_documentacion": 2
+    }
+  },
+  "cierre_de_brechas_contra_el_enunciado": {
+    "tamano_de_funciones": {
+      "reglas": [
+        "PLR0915",
+        "PLR0913"
+      ],
+      "limites": {
+        "sentencias": 30,
+        "parametros": 5
+      },
+      "maximo_antes": 43,
+      "maximo_ahora": 23,
+      "prueba_negativa": "función de 35 sentencias y 7 parámetros: exit 1"
+    },
+    "validez_de_enlaces": "docs-links, con 12 tests contra un servidor HTTP local",
+    "perfilado_despues_de_las_pruebas": true,
+    "secciones_agregadas": [
+      "Problema que resuelve",
+      "Configuración",
+      "Casos de prueba y resultados"
+    ],
+    "verificado": {
+      "python_3.11_3.12_3.13": "81 de 81 en las tres, cobertura 100 %"
+    },
+    "alerta_de_codeql_corregida": {
+      "regla": "Incomplete URL substring sanitization (High, etiqueta test)",
+      "archivo": "Ver-Optimizada/tests/test_tasks.py",
+      "solucion": "se parsea la tabla impresa con urlparse y se compara el mapeo host -> veredicto por igualdad exacta, con un test para hosts que solo se parecen"
     }
   }
 }
