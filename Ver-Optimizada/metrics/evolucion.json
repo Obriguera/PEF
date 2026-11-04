@@ -1,0 +1,324 @@
+{
+  "entorno": {
+    "python": "3.13.17",
+    "sistema": "Linux-6.18.44-fc-v233-x86_64-with-glibc2.39",
+    "cpus": 4,
+    "nota": "Los tiempos dependen de la máquina; comparar las versiones entre sí, no con otros equipos."
+  },
+  "dataset": {
+    "peliculas": 500,
+    "ratings_por_usuario": 30,
+    "semilla": 42
+  },
+  "versiones": {
+    "Base": {
+      "mediciones": [
+        {
+          "usuarios": 250,
+          "repeticiones": 5,
+          "ratings": 7500,
+          "ms": {
+            "prepare_data": 1.499,
+            "calculate_similarity": 654.049,
+            "recommend_movies": 12.292,
+            "analyze_popularity": 6.493
+          },
+          "pico_mb": 22.5,
+          "total_ms": 674.333
+        },
+        {
+          "usuarios": 500,
+          "repeticiones": 3,
+          "ratings": 15000,
+          "ms": {
+            "prepare_data": 3.419,
+            "calculate_similarity": 2928.155,
+            "recommend_movies": 25.295,
+            "analyze_popularity": 8.232
+          },
+          "pico_mb": 47.2,
+          "total_ms": 2965.101
+        },
+        {
+          "usuarios": 1000,
+          "repeticiones": 3,
+          "ratings": 30000,
+          "ms": {
+            "prepare_data": 9.337,
+            "calculate_similarity": 8198.635,
+            "recommend_movies": 41.087,
+            "analyze_popularity": 8.331
+          },
+          "pico_mb": 143.5,
+          "total_ms": 8257.39
+        },
+        {
+          "usuarios": 2000,
+          "repeticiones": 1,
+          "ratings": 60000,
+          "ms": {
+            "prepare_data": 11.095,
+            "calculate_similarity": 32921.647,
+            "recommend_movies": 79.926,
+            "analyze_popularity": 11.691
+          },
+          "pico_mb": 274.5,
+          "total_ms": 33024.359
+        }
+      ],
+      "codigo": {
+        "cc_promedio": 7.0,
+        "cc_maxima": 13,
+        "mi": {
+          "recommender_core.py": 52.7,
+          "analysis_utils.py": 85.02
+        },
+        "sloc": 83
+      }
+    },
+    "Eficiente": {
+      "mediciones": [
+        {
+          "usuarios": 250,
+          "repeticiones": 5,
+          "ratings": 7500,
+          "ms": {
+            "prepare_data": 1.46,
+            "calculate_similarity": 588.002,
+            "recommend_movies": 11.887,
+            "analyze_popularity": 1.368
+          },
+          "pico_mb": 22.6,
+          "total_ms": 602.717
+        },
+        {
+          "usuarios": 500,
+          "repeticiones": 3,
+          "ratings": 15000,
+          "ms": {
+            "prepare_data": 2.661,
+            "calculate_similarity": 2501.683,
+            "recommend_movies": 18.492,
+            "analyze_popularity": 1.704
+          },
+          "pico_mb": 47.4,
+          "total_ms": 2524.54
+        },
+        {
+          "usuarios": 1000,
+          "repeticiones": 3,
+          "ratings": 30000,
+          "ms": {
+            "prepare_data": 7.624,
+            "calculate_similarity": 10833.394,
+            "recommend_movies": 52.064,
+            "analyze_popularity": 4.703
+          },
+          "pico_mb": 143.6,
+          "total_ms": 10897.785
+        },
+        {
+          "usuarios": 2000,
+          "repeticiones": 1,
+          "ratings": 60000,
+          "ms": {
+            "prepare_data": 14.075,
+            "calculate_similarity": 44114.847,
+            "recommend_movies": 86.283,
+            "analyze_popularity": 7.519
+          },
+          "pico_mb": 274.5,
+          "total_ms": 44222.724
+        }
+      ],
+      "codigo": {
+        "cc_promedio": 4.83,
+        "cc_maxima": 9,
+        "mi": {
+          "recommender_core.py": 62.19,
+          "analysis_utils.py": 88.72
+        },
+        "sloc": 74
+      }
+    },
+    "Optimizada": {
+      "mediciones": [
+        {
+          "usuarios": 250,
+          "repeticiones": 7,
+          "ratings": 7500,
+          "ms": {
+            "prepare_data": 1.121,
+            "calculate_similarity": 1.849,
+            "recommend_movies": 2.358,
+            "analyze_popularity": 0.831
+          },
+          "pico_mb": 32.4,
+          "total_ms": 6.159
+        },
+        {
+          "usuarios": 500,
+          "repeticiones": 7,
+          "ratings": 15000,
+          "ms": {
+            "prepare_data": 3.415,
+            "calculate_similarity": 6.466,
+            "recommend_movies": 8.779,
+            "analyze_popularity": 2.48
+          },
+          "pico_mb": 39.0,
+          "total_ms": 21.14
+        },
+        {
+          "usuarios": 1000,
+          "repeticiones": 5,
+          "ratings": 30000,
+          "ms": {
+            "prepare_data": 5.901,
+            "calculate_similarity": 13.81,
+            "recommend_movies": 11.511,
+            "analyze_popularity": 3.182
+          },
+          "pico_mb": 61.6,
+          "total_ms": 34.404
+        },
+        {
+          "usuarios": 2000,
+          "repeticiones": 5,
+          "ratings": 60000,
+          "ms": {
+            "prepare_data": 10.844,
+            "calculate_similarity": 40.251,
+            "recommend_movies": 37.16,
+            "analyze_popularity": 6.218
+          },
+          "pico_mb": 133.5,
+          "total_ms": 94.473
+        }
+      ],
+      "codigo": {
+        "cc_promedio": 3.45,
+        "cc_maxima": 5,
+        "mi": {
+          "recommender_core.py": 67.59,
+          "analysis_utils.py": 84.93
+        },
+        "sloc": 111
+      }
+    }
+  },
+  "historial": {
+    "usuarios": 1000,
+    "tags": {
+      "parcial3-fase0": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 6.802,
+          "calculate_similarity": 18.768,
+          "recommend_movies": 39.276,
+          "analyze_popularity": 3.238
+        },
+        "pico_mb": 59.7,
+        "total_ms": 68.084,
+        "calidad": {}
+      },
+      "parcial3-fase1": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 4.735,
+          "calculate_similarity": 13.062,
+          "recommend_movies": 10.255,
+          "analyze_popularity": 2.997
+        },
+        "pico_mb": 61.8,
+        "total_ms": 31.049,
+        "calidad": {
+          "tests": 24,
+          "cobertura": 100.0,
+          "cc_promedio": 2.66,
+          "mi_core": 67.59
+        }
+      },
+      "parcial3-fase2": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 4.771,
+          "calculate_similarity": 12.879,
+          "recommend_movies": 9.763,
+          "analyze_popularity": 2.95
+        },
+        "pico_mb": 61.8,
+        "total_ms": 30.363,
+        "calidad": {
+          "tests": 35,
+          "cobertura": 100.0,
+          "cc_promedio": 2.67,
+          "mi_core": 67.59
+        }
+      },
+      "parcial3-fase3": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 4.786,
+          "calculate_similarity": 14.358,
+          "recommend_movies": 10.914,
+          "analyze_popularity": 2.963
+        },
+        "pico_mb": 61.8,
+        "total_ms": 33.021,
+        "calidad": {
+          "tests": 47,
+          "cobertura": 100.0,
+          "cc_promedio": 2.7,
+          "mi_core": 67.59
+        }
+      },
+      "parcial3-fase4": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 4.732,
+          "calculate_similarity": 13.085,
+          "recommend_movies": 10.617,
+          "analyze_popularity": 2.925
+        },
+        "pico_mb": 61.8,
+        "total_ms": 31.359,
+        "calidad": {
+          "tests": 57,
+          "cobertura": 100.0,
+          "cc_promedio": 2.7,
+          "mi_core": 67.59
+        }
+      },
+      "parcial3-fase5": {
+        "usuarios": 1000,
+        "repeticiones": 5,
+        "ratings": 30000,
+        "ms": {
+          "prepare_data": 4.713,
+          "calculate_similarity": 13.49,
+          "recommend_movies": 10.329,
+          "analyze_popularity": 2.869
+        },
+        "pico_mb": 61.9,
+        "total_ms": 31.401,
+        "calidad": {
+          "tests": 81,
+          "cobertura": 100.0,
+          "cc_promedio": 2.7,
+          "mi_core": 67.59
+        }
+      }
+    }
+  }
+}

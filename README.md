@@ -64,16 +64,17 @@ PEF/
 │   ├── benchmark.py            # Benchmark sintético (2.000 usuarios, 500 películas)
 │   ├── tasks.py                # Runner de controles: lint, tipos, tests, seguridad y benchmarks
 │   ├── pyproject.toml          # Configuración de pytest, coverage, Ruff, mypy y Bandit
-│   ├── metrics/                # Métricas por fase (JSON) y líneas base de los benchmarks
+│   ├── metrics/                # Métricas por fase (JSON), líneas base de los benchmarks y evolucion.json
+│   ├── evolucion/              # Fase 6: mide las tres versiones con el mismo banco y dibuja los gráficos
 │   ├── index.html              # Interfaz web que consume la API
-│   ├── tests/                  # Suite de pytest (81 tests: unitarios, golden master, memoria, benchmarks y tareas del CI)
+│   ├── tests/                  # Suite de pytest (88 tests: unitarios, golden master, memoria, benchmarks y tareas del CI)
 │   ├── docs/                   # Documentación Sphinx (fuentes y HTML generado)
 │   ├── scalene-profile.*       # Perfil de Scalene
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
 │   ├── quality_report.md       # Reporte de Flake8 y Radon
 │   └── PARCIAL_2_REPORTE_FINAL.md
 ├── .github/           # Workflows de CI, CodeQL y publicación de la documentación, y Dependabot
-├── docs/              # Documentación técnica (MkDocs): 9 secciones, diagramas y referencia del código
+├── docs/              # Documentación técnica (MkDocs): 10 secciones, gráficos (img/), diagramas y referencia del código
 ├── mkdocs.yml         # Configuración de la documentación
 ├── PLAN_PARCIAL_3.md  # Requerimientos, decisiones y estado del Parcial 3
 ├── SECURITY.md        # Política de seguridad, controles, excepciones y modelo de amenazas
@@ -196,12 +197,13 @@ El detalle está en `Ver-Optimizada/quality_report.md`.
 
 Se prueban **propiedades** (por ejemplo, que la matriz sea simétrica con diagonal 0), no solo valores puntuales.
 
-**Parcial 3: 81 tests.** Se suman:
+**Parcial 3: 88 tests.** Se suman:
 
 - `test_characterization.py` (8): comparan por igualdad exacta la salida del recomendador contra un *golden master* generado con el código del Parcial 2, para poder refactorizar sin cambiar resultados.
 - `test_memory.py` (3): pico de memoria con `tracemalloc`; la lectura y el procesamiento paralelo no crecen con el tamaño del archivo, y la matriz de similitud se mantiene en float32.
 - `test_benchmarks.py` (7): benchmarks con línea base (se miden con `python tasks.py bench`).
 - `test_tasks.py` (34): las piezas de `tasks.py` que usa el CI (resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces).
+- `test_evolucion.py` (7): las funciones puras de la medición de evolución entre versiones (Fase 6).
 - Más casos en `test_api.py` (archivos grandes, registros reales procesados) y `test_large_file.py` (worker, consistencia paralelo/secuencial, demo del Punto 3).
 
 ### Punto 9 · Framework
@@ -239,6 +241,23 @@ Las mediciones de tiempo y memoria salen de `scalene-profile.json` en cada carpe
 | Ruff | 33 hallazgos | 0 |
 | `recommend_movies` (40 usuarios, 400 × 300) | 447 ms | 198 ms (2,2×) |
 | Pico de memoria del procesamiento paralelo (400.000 filas, lotes de 5.000) | 67 MB, crece con el archivo | ~9,3 MB, plano |
+
+### Evolución de la eficiencia (Fase 6)
+
+Mismo dataset (semilla fija) y mismo banco para las tres versiones, cada una en su proceso. Detalle, gráficos por etapa, memoria y
+el historial de las fases del Parcial 3 en [`docs/evolucion.md`](docs/evolucion.md).
+
+| Usuarios | Base | Eficiente | Optimizada |
+|---:|---:|---:|---:|
+| 250 | 674 ms | 603 ms | 6 ms |
+| 1.000 | 8,26 s | 10,90 s | 34 ms |
+| 2.000 | 33,0 s | 44,2 s | 94 ms |
+
+![Tiempo total según la cantidad de usuarios](docs/img/evolucion-tiempo.png)
+
+Optimizada es unas 350 veces más rápida que Base con 2.000 usuarios, casi toda por la similitud en BLAS (818×). En este banco la
+Eficiente **no** supera a la Base en la similitud (0,75×): ver la explicación y las limitaciones en la página de evolución. Tiempos
+de una sola máquina (4 CPU, Python 3.13); se rehacen con `python tasks.py evolucion`.
 
 ## 7. Cómo ejecutar el proyecto
 
