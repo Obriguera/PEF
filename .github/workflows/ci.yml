@@ -204,7 +204,7 @@ jobs:
           retention-days: 30
 
   documentacion:
-    name: Documentación (Sphinx, falla ante advertencias)
+    name: Documentación (Sphinx y MkDocs, fallan ante advertencias)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -220,12 +220,18 @@ jobs:
         run: python -m pip install --require-hashes -r requirements-dev.txt
       - name: Sphinx con -W
         run: python tasks.py docs-sphinx
+      # Un paso aparte con !cancelled(): si Sphinx falla, MkDocs igual informa su resultado.
+      - name: MkDocs con --strict (enlaces y anclas internos incluidos)
+        if: ${{ !cancelled() }}
+        run: python tasks.py docs-mkdocs
       - name: Guardar la documentación generada
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: documentacion-sphinx
-          path: Ver-Optimizada/docs/_build/html/
+          name: documentacion
+          path: |
+            Ver-Optimizada/docs/_build/html/
+            site/
           if-no-files-found: ignore
           retention-days: 30
 

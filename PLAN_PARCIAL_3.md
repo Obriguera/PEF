@@ -54,7 +54,7 @@ README, en la documentación y en las diapositivas.
 | 2. Rendimiento y memoria | Benchmarks con pytest-benchmark y línea base, tests de memoria con tracemalloc, tarea de profiling; `spawn` en el `ProcessPoolExecutor`, contrapresión y `records_processed` real | ✅ en PR (tag `parcial3-fase2` tras el merge) |
 | 3. Seguridad | `SECURITY.md` (política por severidad, registro de excepciones, modelo de amenazas), excepciones de Bandit y pip-audit, validación de entradas de la API, workflow de CodeQL y Dependabot | ✅ en PR (tag `parcial3-fase3` tras el merge). CodeQL y Dependabot **sin ejecutar** en GitHub |
 | 4. Pipeline | `.github/workflows/ci.yml`: calidad, secretos, pruebas en Python 3.11/3.12/3.13, dependencias, documentación, benchmarks contra el commit base, perfilado y un job `resultado` que agrega todo. La protección de `master` (exigir el check **Resultado**) la configura el dueño del repo | ✅ en PR (tag `parcial3-fase4` tras el merge). **Sin ejecutar en GitHub** |
-| 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
+| 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, dos diagramas Mermaid, referencia del código con mkdocstrings, el build `--strict` en el CI y el workflow de publicación en Pages | ✅ en PR (tag `parcial3-fase5` tras el merge). **Pages sin configurar ni probado** |
 | 6. Evolución entre versiones | `evolucion/medir.py` (subcomandos `medir`, `graficar`, `todo`), métricas en JSON, gráficos PNG para el README, MkDocs y las diapositivas | ⏳ |
 
 ### Decisiones y hallazgos de la Fase 2
@@ -145,6 +145,36 @@ README, en la documentación y en las diapositivas.
     los checks exigidos o subir el umbral.
   - Solo Linux. No hay job de Windows ni de macOS.
   - Hay que sincronizar `Obriguera/PEF`: tiene hasta la Fase 2 y le faltan las Fases 3 y 4.
+
+### Decisiones y hallazgos de la Fase 5
+
+- **Dónde viven los documentos:** `mkdocs.yml` y `docs/` en la raíz (la documentación abarca las tres versiones),
+  con Sphinx en paralelo dentro de `Ver-Optimizada/docs/`. La referencia del código sale de los docstrings con
+  mkdocstrings (sin advertencias de `griffe`).
+- **`SECURITY.md` se incluye, no se copia** (`pymdownx.snippets`): GitHub lo exige en la raíz, y así hay una sola fuente.
+- **El modo estricto atrapó un defecto real en el primer build:** MkDocs genera anclas sin tildes ni eñes
+  (`configuracion-…-dueno-…`) y GitHub las conserva, así que un enlace de `SECURITY.md` funcionaba en GitHub y
+  se rompía en el sitio. Se configuró un `slugify` que conserva los caracteres, para que README, `SECURITY.md`
+  y el sitio compartan los mismos enlaces. Prueba negativa: un enlace roto, un ancla inexistente y un archivo
+  huérfano hacen fallar el build (3 advertencias, exit 1).
+- **Las fórmulas van en texto plano:** LaTeX exige cargar MathJax desde una CDN y no se ve en GitHub.
+- **Los diagramas se verificaron renderizándolos** en Chromium (el build no valida la sintaxis de Mermaid). Se
+  simplificó el de componentes: las tres líneas punteadas de "tipos" se cruzaban con las de los procesos hijos.
+- **Dependencias externas del sitio publicado** (registradas en `SECURITY.md`): el tema carga Mermaid desde
+  `unpkg.com` (`mermaid@11`, versión mayor flotante) y consulta la API de GitHub; se desactivaron las tipografías de
+  Google Fonts (`font: false`). `unpkg.com` está bloqueado en el entorno de desarrollo, así que la verificación usó
+  el mismo paquete (11.17.2) desde el registro de npm.
+- **Enlaces externos y markdownlint no se validan** (el plan original proponía Lychee y markdownlint): los enlaces
+  externos son frágiles en un CI y agregarían un binario más. Los internos sí, en cada build.
+- **Material for MkDocs llega a fin de vida el 5/5/2027** (lo anuncia el propio tema); sucesor: Zensical.
+- **Las cifras de la documentación se verificaron contra la fuente:** los ejemplos de la API son respuestas reales de
+  `TestClient`, las cuentas de tests salen de `pytest --collect-only`, y se corrigieron dos errores propios antes de
+  publicar: «matriz de cientos de MB» (era la de la versión Eficiente, no la Optimizada) y el rango de lentitud del
+  runner de GitHub, que es 1,1× a 2,1× y no 1,5× a 2×.
+- **Control de acceso (a confirmar contra el enunciado):** la documentación se edita con los permisos y la revisión
+  del repositorio, pero en GitHub Pages la **lectura es pública**. Si el enunciado exige restringir también la
+  lectura, hay que usar otra plataforma (por ejemplo, un wiki privado o GitHub Enterprise Cloud).
+- **Pendiente del dueño del repo:** Settings > Pages > Source «GitHub Actions» y la variable `PUBLISH_DOCS = true`.
 
 ### Evolución entre versiones (Fase 6)
 

@@ -72,7 +72,9 @@ PEF/
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
 │   ├── quality_report.md       # Reporte de Flake8 y Radon
 │   └── PARCIAL_2_REPORTE_FINAL.md
-├── .github/           # Workflows de CI y CodeQL, y Dependabot
+├── .github/           # Workflows de CI, CodeQL y publicación de la documentación, y Dependabot
+├── docs/              # Documentación técnica (MkDocs): 9 secciones, diagramas y referencia del código
+├── mkdocs.yml         # Configuración de la documentación
 ├── PLAN_PARCIAL_3.md  # Requerimientos, decisiones y estado del Parcial 3
 ├── SECURITY.md        # Política de seguridad, controles, excepciones y modelo de amenazas
 └── Parcial-2.txt      # Checklist de los temas del Parcial 2
@@ -318,6 +320,7 @@ python tasks.py secrets    # Gitleaks sobre el historial de git (necesita el bin
 python tasks.py test       # pytest + cobertura (umbral: 80 %)
 python tasks.py audit      # pip-audit sobre los locks
 python tasks.py docs-sphinx  # Genera docs/_build/html
+python tasks.py docs-mkdocs  # Construye el sitio de documentación en ../site (falla ante advertencias)
 python tasks.py ci         # Todo lo anterior, en el orden del CI
 ```
 
@@ -348,7 +351,7 @@ Cada job llama a la misma tarea de `tasks.py` que se usa en local, así que un f
 | Secretos | Gitleaks sobre todo el historial | `python tasks.py secrets` | cualquier hallazgo | `reportes-secretos` |
 | Pruebas (3.11, 3.12 y 3.13) | pytest, cobertura y memoria | `python tasks.py test` | falla un test o la cobertura es menor a 80 % | `reportes-pruebas-*` |
 | Dependencias | pip-audit sobre los locks | `python tasks.py audit` | vulnerabilidad sin excepción vigente | `reportes-auditoria` |
-| Documentación | Sphinx con `-W` | `python tasks.py docs-sphinx` | advertencia o error | `documentacion-sphinx` |
+| Documentación | Sphinx con `-W` y MkDocs con `--strict` | `python tasks.py docs-sphinx docs-mkdocs` | advertencia, enlace o ancla interna rotos | `documentacion` |
 | Benchmarks | pytest-benchmark contra el commit base | `BENCH_BASE_SHA=<sha> python tasks.py bench-vs-base` | el mínimo de algún benchmark empeora más de 25 % | `reportes-rendimiento` |
 | Perfilado | cProfile y pyinstrument | `python tasks.py profile` | no bloquea | `perfiles` |
 | **Resultado** | agrega a todos los anteriores | — | cualquier job bloqueante no terminó en éxito | resumen de la ejecución |
@@ -367,6 +370,21 @@ en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el
 
 **Qué no cubre.** Solo corre en Linux. Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
 macOS no.
+
+### 7.8 Documentación
+
+La documentación técnica está en [`docs/`](docs/) y se construye con MkDocs Material: **funcional, arquitectura (con
+diagrama de componentes), instalación, diseño técnico, API, pruebas, rendimiento, seguridad y mantenimiento**. La
+referencia del código se genera de los docstrings, y la página de seguridad incluye [`SECURITY.md`](SECURITY.md).
+
+```powershell
+python tasks.py docs-mkdocs   # construye el sitio en ../site; falla ante cualquier advertencia
+python tasks.py docs-serve    # lo sirve en http://127.0.0.1:8000 con recarga automática
+```
+
+El sitio se publica en GitHub Pages con [`.github/workflows/docs.yml`](.github/workflows/docs.yml) al hacer merge en
+`master` (requiere que el dueño del repositorio configure Pages; ver la sección de mantenimiento de la documentación).
+Los enlaces y anclas **internos** se validan en cada build; los externos no. Sphinx se mantiene en paralelo.
 
 ## 8. API REST
 
