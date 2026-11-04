@@ -15,8 +15,8 @@ Es un proyecto académico sin soporte de versiones: se corrige en `master`.
 ## Controles
 
 Cada control tiene herramienta, comando reproducible, reporte y criterio de rechazo. Los comandos se ejecutan
-desde `Ver-Optimizada/`. El pipeline de CI (Fase 4 del plan, todavía no implementado) llamará a las mismas tareas;
-hoy solo CodeQL corre en GitHub.
+desde `Ver-Optimizada/`. El pipeline de CI (`.github/workflows/ci.yml`) llama a las mismas tareas en cada push y
+pull request a `master`, así que lo que falla en el CI se reproduce en local con el mismo comando.
 
 | Control | Herramienta | Comando | Reporte | Rechaza si… |
 |---|---|---|---|---|
@@ -49,7 +49,8 @@ python tasks.py sast secrets audit
 ```
 
 El análisis de Gitleaks recorre el historial de git completo, así que hay que trabajar sobre un clon completo
-(no `--depth 1`); en el CI futuro, con `fetch-depth: 0`.
+(no `--depth 1`); el CI lo hace con `fetch-depth: 0` e instala el binario con un checksum SHA-256 fijado en el
+workflow.
 
 ## Registro de falsos positivos y excepciones
 
@@ -106,13 +107,16 @@ Estos ajustes están en *Settings* de GitHub y no se pueden hacer desde el códi
 - **Code security → Dependabot alerts** y **Dependabot security updates**: avisos por dependencias vulnerables.
 - **Code security → Secret scanning** y **Push protection**: bloquea el push de credenciales conocidas.
 - **Code security → Private vulnerability reporting**: habilita el aviso privado de la sección inicial.
-- **Branches → Branch protection** sobre `master`: exigir los controles del CI y el resultado de Code scanning.
+- **Branches → Branch protection** sobre `master`: exigir el check **Resultado** del workflow CI (agrega todos los
+  controles bloqueantes) y el resultado de Code scanning. Sin esta regla, el CI avisa pero no impide el merge.
 
 ## Estado de verificación
 
 Verificado localmente: Bandit, Gitleaks y pip-audit, con casos positivos y negativos (un token falso con formato de
 GitHub en un commit ya borrado, `shell=True` y `pickle.loads`, y una dependencia con 12 avisos de vulnerabilidad).
 
-**Todavía no ejecutado por GitHub:** el workflow de CodeQL y la configuración de Dependabot. Se validó su estructura
-(SHAs de commit resueltos desde GitHub, permisos mínimos), pero la primera ejecución real puede revelar ajustes.
-Dependabot tiene un riesgo conocido con los locks con hashes, explicado en `.github/dependabot.yml`.
+**Todavía no ejecutado por GitHub:** los workflows de CI y de CodeQL y la configuración de Dependabot. Se validaron
+contra el esquema oficial de workflows de GitHub y se ejecutaron en local los pasos con lógica propia (el job
+`resultado`, la instalación de Gitleaks con su checksum y la comparación de benchmarks), pero la primera ejecución
+real puede revelar ajustes. Dependabot tiene un riesgo conocido con los locks con hashes, explicado en
+`.github/dependabot.yml`.
