@@ -53,7 +53,7 @@ README, en la documentación y en las diapositivas.
 | 1. Código que pase los controles | Ruff, type hints, refactor a A, cobertura ≥ 80 % | ✅ PR #2, tag `parcial3-fase1` |
 | 2. Rendimiento y memoria | Benchmarks con pytest-benchmark y línea base, tests de memoria con tracemalloc, tarea de profiling; `spawn` en el `ProcessPoolExecutor`, contrapresión y `records_processed` real | ✅ en PR (tag `parcial3-fase2` tras el merge) |
 | 3. Seguridad | `SECURITY.md` (política por severidad, registro de excepciones, modelo de amenazas), excepciones de Bandit y pip-audit, validación de entradas de la API, workflow de CodeQL y Dependabot | ✅ en PR (tag `parcial3-fase3` tras el merge). CodeQL y Dependabot **sin ejecutar** en GitHub |
-| 4. Pipeline | `.github/workflows/ci.yml` (con `fetch-depth: 0` para Gitleaks, y subiendo los SARIF a Code scanning) + protección de `master` (la configura el dueño del repo). El job de rendimiento tiene que generar la línea base **en el mismo runner** (`bench-save` sobre la rama base y después `bench` sobre el PR): la versionada en `metrics/benchmarks/` se midió en otra máquina | ⏳ |
+| 4. Pipeline | `.github/workflows/ci.yml`: calidad, secretos, pruebas en Python 3.11/3.12/3.13, dependencias, documentación, benchmarks contra el commit base, perfilado y un job `resultado` que agrega todo. La protección de `master` (exigir el check **Resultado**) la configura el dueño del repo | ✅ en PR (tag `parcial3-fase4` tras el merge). **Sin ejecutar en GitHub** |
 | 5. Documentación | `mkdocs.yml` y `docs/` con las 9 secciones, diagrama en Mermaid, publicación en Pages, página de mantenimiento | ⏳ |
 | 6. Evolución entre versiones | `evolucion/medir.py` (subcomandos `medir`, `graficar`, `todo`), métricas en JSON, gráficos PNG para el README, MkDocs y las diapositivas | ⏳ |
 
@@ -63,6 +63,10 @@ README, en la documentación y en las diapositivas.
   desvío entre corridas fue 25,4 % para la media (igual al umbral: falsos rojos), 48,8 % para la mediana
   y 15,1 % para el mínimo. Contrapartida: una regresión menor al 25 % no se detecta. Validado: una
   lentitud pura de +126,8 % hace fallar `bench` con exit 1; tres corridas sin cambios pasaron las tres.
+  **Corrección (Fase 4):** el razonamiento sobre el margen estaba mal. El 15 % era el desvío de cada corrida
+  respecto del *promedio*, pero una regresión compara *dos corridas entre sí*: dos desvíos de ±15 % dan hasta
+  ~35 %. Medido sobre código idéntico, dos mediciones consecutivas dieron razones de 0,77 a 1,28, y 2 de 10
+  pares superaron el 25 % (falso rojo). Ver «Decisiones y hallazgos de la Fase 4».
 - **Los benchmarks no están en `ci`** (dependen de la máquina). Son `bench`, `bench-save` y `profile`.
   Sin línea base para la plataforma, `bench` mide y avisa que no comparó.
 - **La memoria del procesamiento paralelo crecía con el archivo** (18 → 67 MB entre 100.000 y 400.000
@@ -95,16 +99,52 @@ README, en la documentación y en las diapositivas.
 - **Pendiente del dueño del repo** (Settings): Dependabot alerts y security updates, secret scanning con push
   protection, private vulnerability reporting y protección de `master` (lista en `SECURITY.md`).
 
-### Pipeline previsto (Fase 4)
+### Decisiones y hallazgos de la Fase 4
 
-```
-setup (pip con hashes + caché)
-  ├─► calidad-estática: ruff · mypy · xenon · bandit · gitleaks   (en paralelo)
-  ├─► tests: pytest + cobertura ≥ umbral
-  ├─► deps-y-docs: pip-audit · mkdocs --strict · markdownlint · lychee
-  └─► rendimiento (needs: tests): benchmark vs. línea base · memoria · profiling
-         └─► resultado: resumen en GITHUB_STEP_SUMMARY + artefactos
-```
+- **Cada job llama a `python tasks.py <tarea>`:** una sola fuente de verdad. Los pasos de calidad corren por
+  separado con `!cancelled()`, para que un fallo de Ruff no oculte los de mypy o Bandit.
+- **El job `resultado` es el único check a exigir** en la protección de rama. Falla si algún job no terminó en
+  `success` (incluso omitido o cancelado); `perfilado` queda afuera porque es informativo.
+- **La matriz 3.11/3.12/3.13 se verificó de verdad,** instalando el lock con `pip` y hashes en tres entornos
+  limpios (no con `uv`, como en las fases anteriores): 57 tests y 100 % de cobertura en las tres, aunque NumPy
+  difiera entre versiones (2.4.6 en 3.11 y 2.5.4 en 3.12 y 3.13), con el golden master comparando floats por
+  igualdad exacta.
+- **Benchmarks: se mide el commit base en el mismo runner** (`bench-vs-base`), porque la línea base versionada
+  en `metrics/benchmarks/` es de otra máquina. El código del commit base se mide con el comando del `tasks.py`
+  actual, para que el resultado no dependa de qué `tasks.py` tenga ese commit. Cuando no hay commit base
+  utilizable, mide y avisa que no comparó.
+- **Primer fallo real del CI (PR #7), y lo que destapó.** El job de benchmarks abortó con `INTERNALERROR
+  ValueError: '/tmp/…/storage' is not in the subpath of '…/Ver-Optimizada'` (exit 3). Causa: cuando el
+  `machine_info` de la medición guardada y el de la actual difieren, pytest-benchmark arma una advertencia con
+  `storage.relative_to(Path.cwd())`, y el almacenamiento temporal estaba en `/tmp`. Mi ensayo local no lo vio porque
+  en mi entorno el `machine_info` era idéntico (frecuencia de CPU fija); en un runner de GitHub varía. Se reprodujo
+  forzando una diferencia en el `machine_info`, y se resolvió dejando de usar `--benchmark-compare` en el CI: se
+  comparan los JSON con código propio.
+- **Corrigiendo ese fallo aparecieron tres problemas más de diseño,** todos medidos:
+  1. *Falsos rojos.* Comparar una medición contra otra daba razones de 0,77 a 1,28 sobre código idéntico (2 de
+     10 pares > 25 %). Un solo benchmark (`analyze_popularity`, ~1 ms por vuelta) causaba el ruido: a esa
+     escala el jitter del reloj es de ±20 %. Se alargaron las vueltas de los benchmarks rápidos a ≥12 ms
+     (repitiendo el trabajo adentro de la vuelta): 0 de 10 pares > 25 %. Subir el umbral no era opción: dejaría
+     de detectar regresiones reales.
+  2. *Medición intercalada.* `bench-vs-base` mide 3 rondas intercaladas de cada lado y compara los mejores
+     tiempos. Sobre código idéntico: razones de 0,91 a 1,08 y 0 de 6 corridas en rojo. Detecta una lentitud
+     moderada deliberada (+40 %), marcando solo el benchmark afectado.
+  3. *Definiciones distintas en cada lado.* Cada lado se medía con sus propios benchmarks: al cambiar la definición,
+     el CI comparaba la versión vieja contra la nueva y daba ~21× en 6 de 6 corridas. Ahora los dos lados usan la
+     definición actual, aplicada al código de cada commit.
+- **La línea base versionada se regeneró** (`0002_baseline.json`) porque las definiciones cambiaron. La
+  `0001_baseline.json` queda como historia, no comparable.
+- **Gitleaks:** el binario se instala con un SHA-256 fijado en el workflow (no el de la release, que cambiaría
+  junto con ella). Probado con el checksum correcto (instala) y con uno incorrecto (aborta sin instalar nada).
+- **Validación del workflow:** contra el esquema oficial de GitHub (SchemaStore) y con los trozos con lógica
+  ejecutados en local. El esquema es útil pero no exhaustivo: de 2 errores plantados detectó 1. `actionlint` no
+  se pudo usar (descarga de binario denegada).
+- **Pendientes y riesgos:**
+  - Nada de esto corrió todavía en GitHub; la primera ejecución puede pedir ajustes.
+  - No se midió el ruido de los runners de GitHub. Si el job de benchmarks da falsos rojos, hay que sacarlo de
+    los checks exigidos o subir el umbral.
+  - Solo Linux. No hay job de Windows ni de macOS.
+  - Hay que sincronizar `Obriguera/PEF`: tiene hasta la Fase 2 y le faltan las Fases 3 y 4.
 
 ### Evolución entre versiones (Fase 6)
 

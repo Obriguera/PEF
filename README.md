@@ -72,7 +72,7 @@ PEF/
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
 │   ├── quality_report.md       # Reporte de Flake8 y Radon
 │   └── PARCIAL_2_REPORTE_FINAL.md
-├── .github/           # CodeQL (workflow) y Dependabot
+├── .github/           # Workflows de CI y CodeQL, y Dependabot
 ├── PLAN_PARCIAL_3.md  # Requerimientos, decisiones y estado del Parcial 3
 ├── SECURITY.md        # Política de seguridad, controles, excepciones y modelo de amenazas
 └── Parcial-2.txt      # Checklist de los temas del Parcial 2
@@ -292,7 +292,9 @@ python tasks.py profile      # cProfile y pyinstrument sobre benchmark.py; repor
 
 Las líneas base están en `Ver-Optimizada/metrics/benchmarks/<plataforma>/` y son **específicas de cada plataforma y versión de Python**. Si no hay una para tu combinación, `bench` mide igual pero avisa que no pudo comparar. Los tiempos dependen del hardware: conviene guardar la línea base en la misma máquina donde se va a comparar. El archivo incluye el nombre del equipo (`machine_info.node`).
 
-Se compara el **mínimo** y no la media: en 5 corridas completas el peor desvío entre corridas fue de 15 % para el mínimo y de 25 % para la media, que coincide con el umbral. Una regresión menor al 25 % no se detecta.
+Se compara el **mínimo** y no la media: el ruido de una máquina compartida solo suma tiempo. Una regresión menor al 25 % no se detecta.
+
+`bench` compara **una** medición contra la línea base guardada, así que es orientativo: sobre código idéntico, dos mediciones consecutivas dieron razones de 0,77 a 1,28. Para decidir, usá `bench-vs-base` (abajo), que intercala varias mediciones de cada lado. Para que el ruido no domine, cada vuelta de un benchmark dura al menos ~10 ms: con ~1 ms por vuelta daba falsos rojos.
 
 ### 7.4 Archivos grandes (Punto 3)
 
@@ -334,6 +336,37 @@ La política de bloqueo por severidad, el registro de falsos positivos y excepci
 | Dependencias | pip-audit y Dependabot | hay una vulnerabilidad conocida sin excepción vigente |
 
 Las excepciones llevan motivo y fecha; las de pip-audit, además, vencimiento.
+
+### 7.7 Integración continua
+
+El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre en cada push y en cada pull request a `master`.
+Cada job llama a la misma tarea de `tasks.py` que se usa en local, así que un fallo del CI se reproduce con un comando:
+
+| Job | Qué controla | Reproducir en local | Rechaza si… | Reporte (artefacto) |
+|---|---|---|---|---|
+| Calidad estática | Ruff, mypy, Xenon y Bandit | `python tasks.py lint typecheck complexity sast` | error de Ruff o mypy, función peor que A, o hallazgo de Bandit de severidad y confianza medias o altas | `reportes-calidad` |
+| Secretos | Gitleaks sobre todo el historial | `python tasks.py secrets` | cualquier hallazgo | `reportes-secretos` |
+| Pruebas (3.11, 3.12 y 3.13) | pytest, cobertura y memoria | `python tasks.py test` | falla un test o la cobertura es menor a 80 % | `reportes-pruebas-*` |
+| Dependencias | pip-audit sobre los locks | `python tasks.py audit` | vulnerabilidad sin excepción vigente | `reportes-auditoria` |
+| Documentación | Sphinx con `-W` | `python tasks.py docs-sphinx` | advertencia o error | `documentacion-sphinx` |
+| Benchmarks | pytest-benchmark contra el commit base | `BENCH_BASE_SHA=<sha> python tasks.py bench-vs-base` | el mínimo de algún benchmark empeora más de 25 % | `reportes-rendimiento` |
+| Perfilado | cProfile y pyinstrument | `python tasks.py profile` | no bloquea | `perfiles` |
+| **Resultado** | agrega a todos los anteriores | — | cualquier job bloqueante no terminó en éxito | resumen de la ejecución |
+
+Cada job escribe un resumen (pruebas, cobertura, complejidad, hallazgos y tiempos) en la página de la ejecución.
+
+**Benchmarks.** Una línea base medida en otra máquina no es comparable. Por eso el CI mide el commit base y el actual
+en el mismo runner (`bench-vs-base`): 3 rondas intercaladas (base, actual, base, actual…) y se comparan los **mejores
+tiempos** de cada lado. Los dos lados se miden con la **misma definición de benchmark** (la del commit actual, aplicada
+al código de cada commit): si cada uno usara la suya, un PR que cambie un benchmark compararía cosas distintas. Si esa
+definición no corre sobre el commit base (por ejemplo, prueba una función que todavía no existía), mide y avisa que no
+pudo comparar. Si un cambio es lento a propósito, hay que mergearlo sabiéndolo: no existe una línea base que actualizar.
+
+**Protección de la rama.** Para que el CI impida el merge, el dueño del repositorio debe exigir el check **Resultado**
+en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el CI avisa pero no bloquea.
+
+**Qué no cubre.** Solo corre en Linux. Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
+macOS no.
 
 ## 8. API REST
 

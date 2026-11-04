@@ -7,6 +7,10 @@ sola vez, como prueba de humo. Para medir de verdad:
     python tasks.py bench-save    # guarda una nueva línea base (después de una mejora o de cambiar de máquina)
 
 Los datos son determinísticos (semilla fija), 400 usuarios x 300 películas x 50 ratings.
+
+Cada vuelta dura al menos ~10 ms: se repite el trabajo adentro de la vuelta. Con ~1 ms por vuelta, el jitter del
+reloj y del planificador del sistema operativo es de ±20 % y el control da falsos rojos sobre código idéntico (medido:
+test_analyze_popularity_sin_cache daba razones de 0,85 a 1,26 entre mediciones consecutivas).
 """
 
 import pytest
@@ -22,6 +26,7 @@ from large_file_handler import (
 from recommender_core import calculate_similarity, prepare_data, recommend_movies
 
 USERS_TO_RECOMMEND = 10
+REPETICIONES = 5  # veces que se repite el trabajo en cada vuelta de los benchmarks rápidos
 
 
 @pytest.fixture(scope="module")
@@ -48,12 +53,23 @@ def ratings_csv(tmp_path_factory):
 @pytest.mark.benchmark(group="recomendador")
 def test_prepare_data(benchmark, dataset):
     _, ratings = dataset
-    assert len(benchmark(prepare_data, ratings)) == 400
+
+    def repetido():
+        for _ in range(REPETICIONES):
+            matriz = prepare_data(ratings)
+        return matriz
+
+    assert len(benchmark(repetido)) == 400
 
 
 @pytest.mark.benchmark(group="recomendador")
 def test_calculate_similarity(benchmark, utility_matrix):
-    matrix, user_index = benchmark(calculate_similarity, utility_matrix)
+    def repetido():
+        for _ in range(REPETICIONES):
+            resultado = calculate_similarity(utility_matrix)
+        return resultado
+
+    matrix, user_index = benchmark(repetido)
     assert matrix.shape == (400, 400)
     assert len(user_index) == 400
 
@@ -76,12 +92,13 @@ def test_analyze_popularity_sin_cache(benchmark, dataset):
     movies, ratings = dataset
 
     def sin_cache():
-        # El caché haría que a partir de la segunda vuelta no se calculara nada
-        invalidar_cache_popularidad()
-        return ((ratings, movies), {})
+        for _ in range(4 * REPETICIONES):
+            # El caché haría que a partir de la segunda llamada no se calculara nada
+            invalidar_cache_popularidad()
+            top = analyze_popularity(ratings, movies)
+        return top
 
-    top = benchmark.pedantic(analyze_popularity, setup=sin_cache, rounds=30)
-    assert len(top) == 5
+    assert len(benchmark(sin_cache)) == 5
 
 
 @pytest.mark.benchmark(group="archivos")
@@ -95,7 +112,13 @@ def test_lectura_en_lotes(benchmark, ratings_csv):
 @pytest.mark.benchmark(group="archivos")
 def test_agregacion_de_un_lote(benchmark, ratings_csv):
     lote = next(stream_ratings_in_batches(ratings_csv, batch_size=25_000))
-    stats = benchmark(_process_chunk_worker, lote)
+
+    def repetido():
+        for _ in range(REPETICIONES):
+            stats = _process_chunk_worker(lote)
+        return stats
+
+    stats = benchmark(repetido)
     assert sum(movie["count"] for movie in stats.values()) == 25_000
 
 
