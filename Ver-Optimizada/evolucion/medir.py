@@ -116,44 +116,79 @@ def medir() -> dict[str, Any]:
                 raise RuntimeError(f"{nombre} recomienda distinto con {n} usuarios: {recomendacion}")
             fila["total_ms"] = total_ms(fila["ms"])
             filas.append(fila)
-            print(f"{nombre:11} {n:5} usuarios  total {fila['total_ms']:>10.1f} ms  pico {fila['pico_mb']} MB", flush=True)
+            print(
+                f"{nombre:11} {n:5} usuarios  total {fila['total_ms']:>10.1f} ms  pico {fila['pico_mb']} MB",
+                flush=True,
+            )
         versiones[nombre] = {"mediciones": filas, "codigo": metricas_de_codigo(REPO / carpeta)}
-    return {"entorno": entorno(), "dataset": {"peliculas": 500, "ratings_por_usuario": 30, "semilla": 42}, "versiones": versiones}
+    return {
+        "entorno": entorno(),
+        "dataset": {"peliculas": 500, "ratings_por_usuario": 30, "semilla": 42},
+        "versiones": versiones,
+    }
 
 
 def calidad_de_tag(tag: str) -> dict[str, Any]:
     """Tests y cobertura de un tag, leídos de su metrics/<tag>.json (si ese tag lo tiene)."""
     proc = subprocess.run(
         ["git", "show", f"{tag}:Ver-Optimizada/metrics/{tag}.json"],  # noqa: S607
-        cwd=REPO, capture_output=True, text=True, check=False,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return {}
     datos = json.loads(proc.stdout)
     cob, cc = datos.get("cobertura", {}), datos.get("complejidad", {})
-    return {"tests": cob.get("tests"), "cobertura": cob.get("total"), "cc_promedio": cc.get("cc_promedio"),
-            "mi_core": next((v for k, v in cc.get("mi", {}).items() if k.startswith("recommender_core")), None)}
+    return {
+        "tests": cob.get("tests"),
+        "cobertura": cob.get("total"),
+        "cc_promedio": cc.get("cc_promedio"),
+        "mi_core": next((v for k, v in cc.get("mi", {}).items() if k.startswith("recommender_core")), None),
+    }
+
+
+RONDAS_HISTORIAL = 4
 
 
 def historial() -> dict[str, Any]:
-    """Mide Optimizada en cada tag de la Parcial 3 usando un worktree temporal por tag."""
+    """Mide Optimizada en cada tag de la Parcial 3 con un worktree temporal por tag.
+
+    Las rondas se intercalan (fase0..fase5, fase0..fase5, ...) y de cada tag se conserva la mejor: el ruido de la
+    máquina llega a 1,7 veces entre corridas seguidas del mismo código, y una sola pasada lo confunde con
+    una regresión.
+    """
     resultado: dict[str, Any] = {}
     with tempfile.TemporaryDirectory() as tmp:
+        arboles = {}
         for tag in TAGS:
-            destino = Path(tmp) / tag
-            subprocess.run(["git", "worktree", "add", "--detach", str(destino), tag], cwd=REPO, check=True, capture_output=True)  # noqa: S607
-            try:
-                fila = lanzar(destino / "Ver-Optimizada", TAMANO_HISTORIAL, 5)
-            except RuntimeError as error:
-                print(f"{tag}: sin medición ({error})", flush=True)
-                continue
-            finally:
-                subprocess.run(["git", "worktree", "remove", "--force", str(destino)], cwd=REPO, check=True, capture_output=True)  # noqa: S607
-            fila.pop("recomendacion", None)
-            fila["total_ms"] = total_ms(fila["ms"])
-            fila["calidad"] = calidad_de_tag(tag)
-            resultado[tag] = fila
-            print(f"{tag}: total {fila['total_ms']:.1f} ms, pico {fila['pico_mb']} MB", flush=True)
+            arboles[tag] = Path(tmp) / tag
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", str(arboles[tag]), tag],
+                cwd=REPO,
+                check=True,
+                capture_output=True,
+            )  # noqa: S607
+        try:
+            for ronda in range(RONDAS_HISTORIAL):
+                for tag, arbol in arboles.items():
+                    fila = lanzar(arbol / "Ver-Optimizada", TAMANO_HISTORIAL, 5)
+                    fila.pop("recomendacion", None)
+                    fila["total_ms"] = total_ms(fila["ms"])
+                    if tag not in resultado or fila["total_ms"] < resultado[tag]["total_ms"]:
+                        resultado[tag] = fila
+                print(
+                    f"ronda {ronda + 1}: " + ", ".join(f"{t[-5:]} {r['total_ms']:.1f}" for t, r in resultado.items()),
+                    flush=True,
+                )
+        finally:
+            for arbol in arboles.values():
+                subprocess.run(
+                    ["git", "worktree", "remove", "--force", str(arbol)], cwd=REPO, check=False, capture_output=True
+                )  # noqa: S607
+    for tag, fila in resultado.items():
+        fila["calidad"] = calidad_de_tag(tag)
     return resultado
 
 

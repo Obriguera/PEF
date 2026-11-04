@@ -376,6 +376,11 @@ def profile() -> None:
     run(PY, "-m", "pyinstrument", "--renderer", "html", "--outfile", str(REPORTS / "profile.html"), "benchmark.py")
 
 
+@task("Evolución entre versiones (Fase 6): mide las tres y dibuja los gráficos; manual, tarda minutos")
+def evolucion() -> None:
+    run(PY, "evolucion/medir.py", "todo")
+
+
 # -------------------------------------------- dependencias y documentación
 
 

@@ -19,7 +19,7 @@ addopts = "-ra --benchmark-disable"
 [tool.coverage.run]
 source = ["."]
 branch = true
-omit = ["tests/*", "docs/*", "benchmark.py", "tasks.py", ".venv/*"]
+omit = ["tests/*", "docs/*", "evolucion/*", "benchmark.py", "tasks.py", ".venv/*"]
 
 [tool.coverage.report]
 fail_under = 80

@@ -283,3 +283,13 @@ Todo el estado del trabajo está en el repo. Para seguir:
   varias repeticiones. La Fase 1 midió `recommend_movies` en 447 ms → 198 ms con 400 usuarios ×
   300 películas y 20.000 ratings.
 
+
+
+## Fase 6: evolución de la eficiencia entre versiones (extra, no pedida por el enunciado)
+
+- **Hecho:** `Ver-Optimizada/evolucion/` (worker, orquestador y gráficos), `python tasks.py evolucion` (manual, fuera del CI),
+  `metrics/evolucion.json`, cuatro gráficos en `docs/img/`, página `docs/evolucion.md` y sección en el README.
+- **Hallazgos:** Optimizada es ~350× más rápida que Base con 2.000 usuarios; la Eficiente no supera a la Base en la
+  similitud (0,75×); durante el Parcial 3 el rendimiento no se degradó (31 ms estables desde la Fase 1, 68 ms antes).
+- **Repositorio oficial:** `RicLagoria/PEF`; `Obriguera/PEF` queda como espejo. Pendiente de la interfaz de GitHub: invitar a
+  Octavio como colaborador con *Write* y revisar los ajustes de seguridad (Dependabot, secret scanning).
