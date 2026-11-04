@@ -1,6 +1,6 @@
 # Pruebas
 
-La suite tiene **80 tests** y una cobertura del **100 %** (líneas y ramas) sobre el código de la aplicación; el umbral
+La suite tiene **81 tests** y una cobertura del **100 %** (líneas y ramas) sobre el código de la aplicación; el umbral
 que exige el CI es 80 %. Corre en Python 3.11, 3.12 y 3.13.
 
 ```bash
@@ -24,7 +24,7 @@ python -m pytest tests/test_api.py -q         # un solo archivo
 | `test_large_file.py` | 7 | Lectura por lotes, escritura, *worker*, paralelo contra secuencial y la demostración. |
 | `test_memory.py` | 3 | El pico de memoria no crece con el tamaño del archivo (ver abajo). |
 | `test_benchmarks.py` | 7 | Benchmarks; se miden con `python tasks.py bench` (ver [Rendimiento](rendimiento.md)). |
-| `test_tasks.py` | 33 | Las piezas de `tasks.py` que usa el CI: resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces. |
+| `test_tasks.py` | 34 | Las piezas de `tasks.py` que usa el CI: resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces. |
 
 ## Pruebas de caracterización (*golden master*)
 
@@ -74,7 +74,7 @@ Casos representativos, con lo que se espera de cada uno:
 
 | Control | Resultado |
 |---|---|
-| Tests en Python 3.11, 3.12 y 3.13 | 80 de 80 en las tres versiones |
+| Tests en Python 3.11, 3.12 y 3.13 | 81 de 81 en las tres versiones |
 | Cobertura (líneas y ramas) | 100 % en los cinco módulos de la aplicación; umbral 80 % |
 | Complejidad ciclomática | todas las funciones en rango A (máxima 5) |
 | Tipado | 0 errores de mypy, y el núcleo también con `--strict` |

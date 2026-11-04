@@ -23,7 +23,7 @@
   "cobertura": {
     "total": 100.0,
     "umbral": 80,
-    "tests": 80,
+    "tests": 81,
     "por_modulo": {
       "analysis_utils": 100,
       "data_models": 100,
@@ -308,7 +308,12 @@
       "Casos de prueba y resultados"
     ],
     "verificado": {
-      "python_3.11_3.12_3.13": "80 de 80 en las tres, cobertura 100 %"
+      "python_3.11_3.12_3.13": "81 de 81 en las tres, cobertura 100 %"
+    },
+    "alerta_de_codeql_corregida": {
+      "regla": "Incomplete URL substring sanitization (High, etiqueta test)",
+      "archivo": "Ver-Optimizada/tests/test_tasks.py",
+      "solucion": "se parsea la tabla impresa con urlparse y se compara el mapeo host -> veredicto por igualdad exacta, con un test para hosts que solo se parecen"
     }
   }
 }

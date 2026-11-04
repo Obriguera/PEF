@@ -66,7 +66,7 @@ PEF/
 │   ├── pyproject.toml          # Configuración de pytest, coverage, Ruff, mypy y Bandit
 │   ├── metrics/                # Métricas por fase (JSON) y líneas base de los benchmarks
 │   ├── index.html              # Interfaz web que consume la API
-│   ├── tests/                  # Suite de pytest (80 tests: unitarios, golden master, memoria, benchmarks y tareas del CI)
+│   ├── tests/                  # Suite de pytest (81 tests: unitarios, golden master, memoria, benchmarks y tareas del CI)
 │   ├── docs/                   # Documentación Sphinx (fuentes y HTML generado)
 │   ├── scalene-profile.*       # Perfil de Scalene
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
@@ -196,12 +196,12 @@ El detalle está en `Ver-Optimizada/quality_report.md`.
 
 Se prueban **propiedades** (por ejemplo, que la matriz sea simétrica con diagonal 0), no solo valores puntuales.
 
-**Parcial 3: 80 tests.** Se suman:
+**Parcial 3: 81 tests.** Se suman:
 
 - `test_characterization.py` (8): comparan por igualdad exacta la salida del recomendador contra un *golden master* generado con el código del Parcial 2, para poder refactorizar sin cambiar resultados.
 - `test_memory.py` (3): pico de memoria con `tracemalloc`; la lectura y el procesamiento paralelo no crecen con el tamaño del archivo, y la matriz de similitud se mantiene en float32.
 - `test_benchmarks.py` (7): benchmarks con línea base (se miden con `python tasks.py bench`).
-- `test_tasks.py` (33): las piezas de `tasks.py` que usa el CI (resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces).
+- `test_tasks.py` (34): las piezas de `tasks.py` que usa el CI (resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces).
 - Más casos en `test_api.py` (archivos grandes, registros reales procesados) y `test_large_file.py` (worker, consistencia paralelo/secuencial, demo del Punto 3).
 
 ### Punto 9 · Framework
