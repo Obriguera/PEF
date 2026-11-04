@@ -204,7 +204,7 @@ jobs:
           retention-days: 30
 
   documentacion:
-    name: Documentación (Sphinx y MkDocs, fallan ante advertencias)
+    name: Documentación (Sphinx, MkDocs y enlaces)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -224,6 +224,10 @@ jobs:
       - name: MkDocs con --strict (enlaces y anclas internos incluidos)
         if: ${{ !cancelled() }}
         run: python tasks.py docs-mkdocs
+      # Solo 404, 410 o un dominio inexistente rechazan; un 403, un 429 o un timeout quedan como "no verificables".
+      - name: Enlaces externos (validez de los enlaces)
+        if: ${{ !cancelled() }}
+        run: python tasks.py docs-links
       - name: Guardar la documentación generada
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -274,6 +278,7 @@ jobs:
 
   perfilado:
     name: Perfilado (informativo, no bloquea)
+    needs: pruebas # las mediciones más costosas van después de los controles rápidos
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
