@@ -178,6 +178,10 @@ README, en la documentación y en las diapositivas.
 - **Control de acceso (a confirmar contra el enunciado):** la documentación se edita con los permisos y la revisión
   del repositorio, pero en GitHub Pages la **lectura es pública**. Si el enunciado exige restringir también la
   lectura, hay que usar otra plataforma (por ejemplo, un wiki privado o GitHub Enterprise Cloud).
+- **Runner fijado en `ubuntu-24.04`.** GitHub anunció que `ubuntu-latest` pasa a Ubuntu 26 (migración gradual desde
+  el 19/10/2026). Las ejecuciones del 03/11 todavía corrían en 24.04 (lo dice la clave de caché del log). Se fijó la
+  imagen en los tres workflows para evitar un cambio de entorno desconocido: no se sabía si `setup-python` ya
+  publica 3.11, 3.12 y 3.13 para Ubuntu 26. Costo: hay que subir la versión antes de que GitHub retire la 24.04.
 - **Pendiente del dueño del repo:** Settings > Pages > Source «GitHub Actions» y la variable `PUBLISH_DOCS = true`.
 
 ### Auditoría contra el enunciado (`Parcial-3.pdf`)

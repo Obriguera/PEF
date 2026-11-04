@@ -54,6 +54,7 @@ ejecución. Cada job escribe además un resumen en la página de la ejecución.
 |---|---|
 | Actualizar dependencias | Subir el piso en el `.in`, correr `python tasks.py lock`, `python tasks.py install` y `python tasks.py ci`. Dependabot propone actualizaciones cada semana, pero puede dejar los hashes sin actualizar: el CI las rechaza de forma segura y se rehacen con el procedimiento de arriba. |
 | Revisar excepciones de seguridad | Las de pip-audit vencen solas y hacen fallar la auditoría. Revisar también el registro de [Seguridad](seguridad.md). |
+| Cambiar la imagen de Ubuntu del CI | Los workflows fijan `ubuntu-24.04` en lugar de `ubuntu-latest`, para que un cambio de imagen de GitHub no rompa el CI sin que nadie lo toque. Cuando GitHub anuncie el retiro de esa imagen, cambiar la etiqueta en `ci.yml`, `docs.yml` y `codeql.yml` y comprobar que las tres versiones de Python y Gitleaks funcionan en la nueva. |
 | Sumar una versión de Python | Agregarla a la matriz del job de pruebas en `.github/workflows/ci.yml`, **después** de instalarla y correr la suite en local. |
 | Cambiar de máquina para medir | `python tasks.py bench-save` guarda una línea base propia; la versionada es de otro equipo. |
 

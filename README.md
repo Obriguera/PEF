@@ -370,7 +370,7 @@ pudo comparar. Si un cambio es lento a propósito, hay que mergearlo sabiéndolo
 **Protección de la rama.** Para que el CI impida el merge, el dueño del repositorio debe exigir el check **Resultado**
 en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el CI avisa pero no bloquea.
 
-**Qué no cubre.** Solo corre en Linux. Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
+**Qué no cubre.** Solo corre en Linux (imagen `ubuntu-24.04` fijada, no `ubuntu-latest`). Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
 macOS no.
 
 ### 7.8 Documentación
