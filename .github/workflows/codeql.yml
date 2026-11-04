@@ -16,7 +16,7 @@ permissions:
 jobs:
   analyze:
     name: Analizar Python
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       security-events: write # subir los resultados a Code scanning

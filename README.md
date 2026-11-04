@@ -66,7 +66,7 @@ PEF/
 │   ├── pyproject.toml          # Configuración de pytest, coverage, Ruff, mypy y Bandit
 │   ├── metrics/                # Métricas por fase (JSON) y líneas base de los benchmarks
 │   ├── index.html              # Interfaz web que consume la API
-│   ├── tests/                  # Suite de pytest (35 tests: unitarios, golden master, memoria y benchmarks)
+│   ├── tests/                  # Suite de pytest (81 tests: unitarios, golden master, memoria, benchmarks y tareas del CI)
 │   ├── docs/                   # Documentación Sphinx (fuentes y HTML generado)
 │   ├── scalene-profile.*       # Perfil de Scalene
 │   ├── mi_programa.prof        # Perfil de cProfile (se visualiza con SnakeViz)
@@ -196,11 +196,12 @@ El detalle está en `Ver-Optimizada/quality_report.md`.
 
 Se prueban **propiedades** (por ejemplo, que la matriz sea simétrica con diagonal 0), no solo valores puntuales.
 
-**Parcial 3: 35 tests.** Se suman:
+**Parcial 3: 81 tests.** Se suman:
 
 - `test_characterization.py` (8): comparan por igualdad exacta la salida del recomendador contra un *golden master* generado con el código del Parcial 2, para poder refactorizar sin cambiar resultados.
 - `test_memory.py` (3): pico de memoria con `tracemalloc`; la lectura y el procesamiento paralelo no crecen con el tamaño del archivo, y la matriz de similitud se mantiene en float32.
 - `test_benchmarks.py` (7): benchmarks con línea base (se miden con `python tasks.py bench`).
+- `test_tasks.py` (34): las piezas de `tasks.py` que usa el CI (resumen, comparación de benchmarks, excepciones de `pip-audit` y verificación de enlaces).
 - Más casos en `test_api.py` (archivos grandes, registros reales procesados) y `test_large_file.py` (worker, consistencia paralelo/secuencial, demo del Punto 3).
 
 ### Punto 9 · Framework
@@ -314,13 +315,14 @@ Todos los controles se ejecutan con `tasks.py`, el mismo runner que usa el CI. L
 python tasks.py --list     # Tareas disponibles
 python tasks.py lint       # Ruff: estilo y errores potenciales
 python tasks.py typecheck  # mypy
-python tasks.py complexity # Radon + Xenon (umbral: rango A)
+python tasks.py complexity # Radon + Xenon (rango A) y tamaño de funciones (30 sentencias, 5 parámetros)
 python tasks.py sast       # Bandit (reporte SARIF en reports/)
 python tasks.py secrets    # Gitleaks sobre el historial de git (necesita el binario; ver SECURITY.md)
 python tasks.py test       # pytest + cobertura (umbral: 80 %)
 python tasks.py audit      # pip-audit sobre los locks
 python tasks.py docs-sphinx  # Genera docs/_build/html
 python tasks.py docs-mkdocs  # Construye el sitio de documentación en ../site (falla ante advertencias)
+python tasks.py docs-links   # Enlaces externos de la documentación (404, 410 o dominio inexistente rechazan)
 python tasks.py ci         # Todo lo anterior, en el orden del CI
 ```
 
@@ -347,13 +349,13 @@ Cada job llama a la misma tarea de `tasks.py` que se usa en local, así que un f
 
 | Job | Qué controla | Reproducir en local | Rechaza si… | Reporte (artefacto) |
 |---|---|---|---|---|
-| Calidad estática | Ruff, mypy, Xenon y Bandit | `python tasks.py lint typecheck complexity sast` | error de Ruff o mypy, función peor que A, o hallazgo de Bandit de severidad y confianza medias o altas | `reportes-calidad` |
+| Calidad estática | Ruff, mypy, Xenon y Bandit | `python tasks.py lint typecheck complexity sast` | error de Ruff o mypy, función peor que A o con más de 30 sentencias o 5 parámetros, o hallazgo de Bandit de severidad y confianza medias o altas | `reportes-calidad` |
 | Secretos | Gitleaks sobre todo el historial | `python tasks.py secrets` | cualquier hallazgo | `reportes-secretos` |
 | Pruebas (3.11, 3.12 y 3.13) | pytest, cobertura y memoria | `python tasks.py test` | falla un test o la cobertura es menor a 80 % | `reportes-pruebas-*` |
 | Dependencias | pip-audit sobre los locks | `python tasks.py audit` | vulnerabilidad sin excepción vigente | `reportes-auditoria` |
-| Documentación | Sphinx con `-W` y MkDocs con `--strict` | `python tasks.py docs-sphinx docs-mkdocs` | advertencia, enlace o ancla interna rotos | `documentacion` |
+| Documentación | Sphinx con `-W` y MkDocs con `--strict` | `python tasks.py docs-sphinx docs-mkdocs docs-links` | advertencia, enlace o ancla internos rotos, o un enlace externo roto (404, 410 o dominio inexistente) | `documentacion` |
 | Benchmarks | pytest-benchmark contra el commit base | `BENCH_BASE_SHA=<sha> python tasks.py bench-vs-base` | el mínimo de algún benchmark empeora más de 25 % | `reportes-rendimiento` |
-| Perfilado | cProfile y pyinstrument | `python tasks.py profile` | no bloquea | `perfiles` |
+| Perfilado | cProfile y pyinstrument | `python tasks.py profile` | no bloquea: se aprueba si genera los reportes (corre después de las pruebas) | `perfiles` |
 | **Resultado** | agrega a todos los anteriores | — | cualquier job bloqueante no terminó en éxito | resumen de la ejecución |
 
 Cada job escribe un resumen (pruebas, cobertura, complejidad, hallazgos y tiempos) en la página de la ejecución.
@@ -368,7 +370,7 @@ pudo comparar. Si un cambio es lento a propósito, hay que mergearlo sabiéndolo
 **Protección de la rama.** Para que el CI impida el merge, el dueño del repositorio debe exigir el check **Resultado**
 en *Settings → Branches* (ver [`SECURITY.md`](SECURITY.md)). Sin esa regla, el CI avisa pero no bloquea.
 
-**Qué no cubre.** Solo corre en Linux. Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
+**Qué no cubre.** Solo corre en Linux (imagen `ubuntu-24.04` fijada, no `ubuntu-latest`). Python 3.11, 3.12 y 3.13 se probaron en local con `pip` y hashes; Windows y
 macOS no.
 
 ### 7.8 Documentación
@@ -384,7 +386,7 @@ python tasks.py docs-serve    # lo sirve en http://127.0.0.1:8000 con recarga au
 
 El sitio se publica en GitHub Pages con [`.github/workflows/docs.yml`](.github/workflows/docs.yml) al hacer merge en
 `master` (requiere que el dueño del repositorio configure Pages; ver la sección de mantenimiento de la documentación).
-Los enlaces y anclas **internos** se validan en cada build; los externos no. Sphinx se mantiene en paralelo.
+Los enlaces y anclas **internos** se validan en cada build, y los **externos** con `python tasks.py docs-links` (solo un 404, un 410 o un dominio inexistente rechazan; un 403 o un timeout quedan como «no verificables»). Sphinx se mantiene en paralelo.
 
 ## 8. API REST
 

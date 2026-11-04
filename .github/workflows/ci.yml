@@ -38,7 +38,7 @@ env:
 jobs:
   calidad:
     name: Calidad estática
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -89,7 +89,7 @@ jobs:
 
   secretos:
     name: Secretos (Gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -139,7 +139,7 @@ jobs:
 
   pruebas:
     name: Pruebas (Python ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false # que se vea en qué versiones falla, no solo en la primera
@@ -174,7 +174,7 @@ jobs:
 
   auditoria:
     name: Dependencias (pip-audit)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -204,8 +204,8 @@ jobs:
           retention-days: 30
 
   documentacion:
-    name: Documentación (Sphinx y MkDocs, fallan ante advertencias)
-    runs-on: ubuntu-latest
+    name: Documentación (Sphinx, MkDocs y enlaces)
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -224,6 +224,10 @@ jobs:
       - name: MkDocs con --strict (enlaces y anclas internos incluidos)
         if: ${{ !cancelled() }}
         run: python tasks.py docs-mkdocs
+      # Solo 404, 410 o un dominio inexistente rechazan; un 403, un 429 o un timeout quedan como "no verificables".
+      - name: Enlaces externos (validez de los enlaces)
+        if: ${{ !cancelled() }}
+        run: python tasks.py docs-links
       - name: Guardar la documentación generada
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -238,7 +242,7 @@ jobs:
   rendimiento:
     name: Benchmarks contra el commit base
     needs: pruebas # no tiene sentido medir velocidad si las pruebas fallan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -274,7 +278,8 @@ jobs:
 
   perfilado:
     name: Perfilado (informativo, no bloquea)
-    runs-on: ubuntu-latest
+    needs: pruebas # las mediciones más costosas van después de los controles rápidos
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     continue-on-error: true
     steps:
@@ -305,7 +310,7 @@ jobs:
     name: Resultado
     if: ${{ always() }}
     needs: [calidad, secretos, pruebas, auditoria, documentacion, rendimiento]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     defaults:
       run:

@@ -17,12 +17,19 @@ Ejemplos:
 import argparse
 import json
 import os
+import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
@@ -98,12 +105,15 @@ def typecheck() -> None:
     run(PY, "-m", "mypy")
 
 
-@task("Radon + Xenon: complejidad ciclomática e índice de mantenibilidad")
+@task("Radon + Xenon + Ruff: complejidad ciclomática, tamaño de las funciones e índice de mantenibilidad")
 def complexity() -> None:
     REPORTS.mkdir(exist_ok=True)
     run(PY, "-m", "radon", "cc", "-s", "-a", *SOURCES)
     run(PY, "-m", "radon", "mi", "-s", *SOURCES)
     run(PY, "-m", "radon", "cc", "-j", "-O", str(REPORTS / "radon-cc.json"), *SOURCES)
+    # Tamaño de las funciones: sentencias (PLR0915) y parámetros (PLR0913), con los límites de pyproject.toml.
+    # --select reemplaza al select de pyproject: solo se evalúan estas dos reglas.
+    run(PY, "-m", "ruff", "check", "--select", "PLR0915,PLR0913", "--no-cache", *SOURCES)
     # Rechazo: alguna función peor que A, algún módulo peor que A o un promedio peor que A
     run(PY, "-m", "xenon", "--max-absolute", "A", "--max-modules", "A", "--max-average", "A", *SOURCES)
 
@@ -424,6 +434,97 @@ def docs_mkdocs() -> None:
 @task("MkDocs: sirve la documentación en http://127.0.0.1:8000 con recarga automática")
 def docs_serve() -> None:
     run(PY, "-m", "mkdocs", "serve", "-f", str(MKDOCS_CONFIG))
+
+
+# ---------------------------------------------------- enlaces de la documentación
+
+LINK_TIMEOUT = 15  # segundos por intento
+LINK_ATTEMPTS = 3
+LINK_HOSTS_IGNORED = {"localhost", "127.0.0.1", "0.0.0.0", "example.com"}
+_MARKDOWN_LINK = re.compile(r"\]\((https?://[^)\s]+)\)|<(https?://[^>\s]+)>")
+
+
+def extract_links(text: str) -> set[str]:
+    """URL externas de los enlaces Markdown (`[texto](url)` y `<url>`); ignora el código y los hosts locales."""
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = re.sub(r"`[^`\n]*`", "", text)
+    links = set()
+    for match in _MARKDOWN_LINK.finditer(text):
+        url = (match.group(1) or match.group(2)).split("#")[0].rstrip(".,;")
+        if (urllib.parse.urlparse(url).hostname or "") not in LINK_HOSTS_IGNORED:
+            links.add(url)
+    return links
+
+
+def _try_url(url: str, timeout: float) -> tuple[str, str]:
+    """Un intento: (veredicto, detalle) con veredicto ok, roto, dns, reintentar o inconcluso."""
+    request = urllib.request.Request(url, headers={"User-Agent": "pef-link-check/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return "ok", f"HTTP {response.status}"
+    except urllib.error.HTTPError as error:
+        if error.code in (404, 410):
+            return "roto", f"HTTP {error.code}"
+        retry = error.code == 429 or error.code >= 500
+        return ("reintentar" if retry else "inconcluso"), f"HTTP {error.code}"  # 401 o 403: no se puede verificar
+    except urllib.error.URLError as error:
+        return ("dns" if isinstance(error.reason, socket.gaierror) else "reintentar"), str(error.reason)
+    except OSError as error:  # tiempo de espera agotado, conexión cortada
+        return "reintentar", str(error)
+
+
+def check_url(
+    url: str, attempts: int = LINK_ATTEMPTS, delay: float = 1.0, timeout: float = LINK_TIMEOUT
+) -> tuple[str, str]:
+    """Verifica un enlace con reintentos. Solo 404, 410 y un dominio inexistente cuentan como rotos."""
+    verdict, detail = "inconcluso", ""
+    for attempt in range(attempts):
+        verdict, detail = _try_url(url, timeout)
+        if verdict not in ("reintentar", "dns"):
+            return verdict, detail
+        if attempt < attempts - 1:
+            time.sleep(delay * (attempt + 1))
+    return ("inconcluso" if verdict == "reintentar" else verdict), detail
+
+
+def judge_links(results: dict[str, tuple[str, str]]) -> dict[str, tuple[str, str]]:
+    """Un dominio que no resuelve solo cuenta como roto si otros enlaces respondieron: si no, es falta de conexión."""
+    connected = any(verdict == "ok" for verdict, _ in results.values())
+    final = {}
+    for url, (verdict, detail) in results.items():
+        if verdict == "dns":
+            verdict, detail = (
+                ("roto", f"el dominio no existe ({detail})") if connected else ("inconcluso", "sin conexión")
+            )
+        final[url] = (verdict, detail)
+    return final
+
+
+def collect_links(files: list[Path]) -> dict[str, list[str]]:
+    """Cada URL externa y los archivos en que aparece."""
+    found: dict[str, list[str]] = {}
+    for file in files:
+        for url in extract_links(file.read_text(encoding="utf-8")):
+            found.setdefault(url, []).append(file.name)
+    return found
+
+
+@task("Enlaces externos de la documentación: falla si alguno está roto (404, 410 o dominio inexistente)")
+def docs_links() -> None:
+    repo = ROOT.parent
+    files = sorted([*repo.glob("*.md"), *(repo / "docs").glob("*.md"), *ROOT.glob("*.md")])
+    found = collect_links(files)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        verdicts = judge_links(dict(zip(found, pool.map(check_url, found), strict=True)))
+    print(f"\n{len(found)} enlaces externos en {len(files)} archivos Markdown:")
+    for url, (verdict, detail) in sorted(verdicts.items(), key=lambda item: item[1][0]):
+        print(f"  {verdict:<10} {detail:<28} {url}  ({', '.join(sorted(set(found[url])))})")
+    broken = [url for url, (verdict, _) in verdicts.items() if verdict == "roto"]
+    if broken:
+        sys.exit(f"\n{len(broken)} enlace(s) roto(s).")
+    unverified = sum(verdict == "inconcluso" for verdict, _ in verdicts.values())
+    if unverified:
+        print(f"\n⚠ {unverified} enlace(s) no se pudieron verificar (403, 429, errores del servidor o sin conexión).")
 
 
 # ----------------------------------------------------------------- resumen
