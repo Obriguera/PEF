@@ -38,7 +38,7 @@ env:
 jobs:
   calidad:
     name: Calidad estática
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -89,7 +89,7 @@ jobs:
 
   secretos:
     name: Secretos (Gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -139,7 +139,7 @@ jobs:
 
   pruebas:
     name: Pruebas (Python ${{ matrix.python }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false # que se vea en qué versiones falla, no solo en la primera
@@ -174,7 +174,7 @@ jobs:
 
   auditoria:
     name: Dependencias (pip-audit)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -205,7 +205,7 @@ jobs:
 
   documentacion:
     name: Documentación (Sphinx, MkDocs y enlaces)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -242,7 +242,7 @@ jobs:
   rendimiento:
     name: Benchmarks contra el commit base
     needs: pruebas # no tiene sentido medir velocidad si las pruebas fallan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -279,7 +279,7 @@ jobs:
   perfilado:
     name: Perfilado (informativo, no bloquea)
     needs: pruebas # las mediciones más costosas van después de los controles rápidos
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     continue-on-error: true
     steps:
@@ -310,7 +310,7 @@ jobs:
     name: Resultado
     if: ${{ always() }}
     needs: [calidad, secretos, pruebas, auditoria, documentacion, rendimiento]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     defaults:
       run:
