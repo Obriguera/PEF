@@ -1,5 +1,12 @@
 # Mantenimiento
 
+## Repositorio oficial y roles
+
+El repositorio oficial es **RicLagoria/PEF** (rama `master`, con la protección y el check **Resultado** exigido).
+`Obriguera/PEF` se conserva como espejo: se sincroniza desde el oficial y no recibe cambios propios. Octavio Briguera
+participa como colaborador con permiso de escritura en el oficial (*Settings → Collaborators*), de modo que sus ramas y
+*pull requests* pasan por el mismo CI y la misma revisión.
+
 ## Flujo de trabajo
 
 1. Crear una rama desde `master`.
@@ -79,6 +86,7 @@ Estos ajustes están en *Settings* de GitHub y no se pueden hacer desde el códi
 |---|---|
 | *Branches*: proteger `master` y exigir el check **Resultado** | Sin esta regla el CI avisa pero no impide el merge. |
 | *Pages*: origen «GitHub Actions», y la variable de repositorio `PUBLISH_DOCS` en `true` | Publicar la documentación. |
+| *Collaborators*: invitar a Octavio con permiso *Write* | Que ambos integrantes trabajen en el repositorio oficial. |
 | *Code security*: Dependabot alerts, secret scanning y push protection | Ver [Seguridad](seguridad.md). |
 
 ## Riesgos conocidos
