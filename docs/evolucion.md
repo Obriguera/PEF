@@ -104,3 +104,6 @@ cd Ver-Optimizada
 python tasks.py evolucion                    # mide todo y dibuja (unos 5 minutos)
 python evolucion/medir.py graficar           # solo vuelve a dibujar a partir del JSON
 ```
+
+!!! info "Demo en vivo"
+    Esta nota llegó a Pages desde el pull request de la rama `demo/ensayo` (2026-11-04 14:34).
