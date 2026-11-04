@@ -8,6 +8,7 @@ import urllib.error
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -312,6 +313,26 @@ def test_judge_links_un_dominio_inexistente_solo_es_roto_si_hay_conexion():
     assert {veredicto for veredicto, _ in tasks.judge_links(sin_conexion).values()} == {"inconcluso"}
 
 
+def veredictos_impresos(salida):
+    """{host: veredicto} de la tabla que imprime docs_links; el host se obtiene parseando la URL de cada fila."""
+    filas = {}
+    for linea in salida.splitlines():
+        campos = linea.split()
+        urls = [urlparse(campo) for campo in campos if urlparse(campo).scheme in ("http", "https")]
+        if urls:
+            filas[urls[0].netloc] = campos[0]  # la primera columna de cada fila es el veredicto
+    return filas
+
+
+def test_veredictos_impresos_distingue_hosts_que_solo_se_parecen():
+    # Un host que contiene a otro como prefijo o como parámetro no debe confundirse con él.
+    salida = (
+        "  roto       HTTP 404   https://roto.org.evil.com/x  (README.md)\n"
+        "  ok         HTTP 200   https://evil.com/?u=https://roto.org  (README.md)\n"
+    )
+    assert veredictos_impresos(salida) == {"roto.org.evil.com": "roto", "evil.com": "ok"}
+
+
 def test_docs_links_falla_con_un_enlace_roto_y_avisa_de_los_no_verificables(tmp_path, monkeypatch, capsys):
     (tmp_path / "docs").mkdir()
     (tmp_path / "Ver-Optimizada").mkdir()
@@ -323,8 +344,8 @@ def test_docs_links_falla_con_un_enlace_roto_y_avisa_de_los_no_verificables(tmp_
     with pytest.raises(SystemExit, match="1 enlace"):
         tasks.docs_links()
     salida = capsys.readouterr().out
-    assert "roto" in salida
-    assert "https://roto.org" in salida
+    # Se parsea la tabla impresa y se compara el mapeo completo por igualdad exacta, sin buscar URLs como subcadena.
+    assert veredictos_impresos(salida) == {"bueno.org": "ok", "roto.org": "roto", "bloqueado.org": "inconcluso"}
     assert "3 enlaces externos en 2 archivos" in salida
 
 
