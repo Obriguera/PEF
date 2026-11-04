@@ -13,8 +13,12 @@ import random
 import time
 from collections.abc import Generator, Iterable, Iterator
 from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
+from typing import TYPE_CHECKING
 
 from data_models import Rating
+
+if TYPE_CHECKING:
+    import psutil
 
 DEFAULT_BUFFER_SIZE = 64 * 1024  # 64 KB de buffer de E/S
 DEFAULT_BATCH_SIZE = 25000  # 25.000 registros por lote
@@ -192,6 +196,66 @@ def write_aggregated_results_buffered(
     return output_filepath
 
 
+def _rss_mb(process: "psutil.Process") -> float:
+    """Memoria residente del proceso, en MB."""
+    return float(process.memory_info().rss) / (1024 * 1024)
+
+
+def _print_banner(title: str) -> None:
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+def _measure_naive_approach(process: "psutil.Process", csv_path: str) -> tuple[float, float]:
+    """Enfoque ingenuo: leer todo el archivo en RAM de un solo golpe. Devuelve (segundos, aumento de RAM en MB)."""
+    _print_banner(">>> 1. ENFOQUE INGENUO (Leer todo el archivo en RAM de una vez)")
+    mem_before = _rss_mb(process)
+    start = time.perf_counter()
+
+    with open(csv_path, encoding="utf-8") as f:
+        raw_lines = f.readlines()  # Carga todo el texto en memoria
+        naive_data: list[Rating] = []
+        for line in raw_lines[1:]:
+            parts = line.strip().split(",")
+            naive_data.append({"user_id": int(parts[0]), "movie_id": int(parts[1]), "rating": float(parts[2])})
+
+    _process_chunk_worker(naive_data)
+    elapsed = time.perf_counter() - start
+    memory_increase = max(0.0, _rss_mb(process) - mem_before)
+    print(f"Tiempo enfoque ingenuo: {elapsed:.3f} s")
+    print(f"Aumento de memoria RAM: {memory_increase:.2f} MB")
+    return elapsed, memory_increase  # al volver, se libera la memoria de esta prueba antes de medir la siguiente
+
+
+def _measure_optimized_approach(process: "psutil.Process", csv_path: str, result_path: str) -> tuple[float, float]:
+    """Enfoque optimizado: buffer, lotes y procesos. Devuelve (segundos, aumento de RAM del proceso principal)."""
+    _print_banner(">>> 2. ENFOQUE OPTIMIZADO (Buffer I/O + Batches + Paralelismo)")
+    mem_before = _rss_mb(process)
+    start = time.perf_counter()
+
+    optimized_stats = process_large_file_parallel(
+        filepath=csv_path, batch_size=25000, buffer_size=DEFAULT_BUFFER_SIZE, max_workers=4
+    )
+    write_aggregated_results_buffered(result_path, optimized_stats)
+
+    elapsed = time.perf_counter() - start
+    memory_increase = max(0.0, _rss_mb(process) - mem_before)
+    print(f"Tiempo enfoque optimizado: {elapsed:.3f} s")
+    print(f"Aumento de memoria en proceso principal: {memory_increase:.2f} MB")
+    return elapsed, memory_increase
+
+
+def _print_comparison(naive: tuple[float, float], optimized: tuple[float, float]) -> None:
+    """Resumen comparativo de las dos pruebas, cada una como (segundos, aumento de RAM en MB)."""
+    (t_naive, mem_naive), (t_opt, mem_opt) = naive, optimized
+    speedup = t_naive / t_opt if t_opt > 0 else 1.0
+    _print_banner("RESUMEN COMPARATIVO:")
+    print(f"- Reducción de tiempo / Aceleración: {speedup:.2f}x más rápido")
+    print(f"- Control de memoria: {mem_opt:.2f} MB vs {mem_naive:.2f} MB del método ingenuo")
+    print("=" * 60)
+
+
 def run_point_3_demonstration(output_dir: str = ".", num_records: int = 500000) -> tuple[float, float]:
     """Demostración comparativa para la defensa del Parcial:
 
@@ -205,63 +269,13 @@ def run_point_3_demonstration(output_dir: str = ".", num_records: int = 500000) 
     test_csv = os.path.join(output_dir, "massive_ratings_sample.csv")
     result_csv = os.path.join(output_dir, "massive_ratings_aggregated.csv")
 
-    # 1. Generar archivo grande (por defecto 500.000 registros, ~16-20 MB en disco)
+    # Generar archivo grande (por defecto 500.000 registros, ~16-20 MB en disco)
     generate_large_ratings_csv(test_csv, num_records=num_records, num_users=5000, num_movies=1000)
 
-    # --- PRUEBA 1: Enfoque Ingenuo (Cargar todo en RAM de un solo golpe) ---
-    print("\n" + "=" * 60)
-    print(">>> 1. ENFOQUE INGENUO (Leer todo el archivo en RAM de una vez)")
-    print("=" * 60)
-    mem_before_naive = process.memory_info().rss / (1024 * 1024)
-    t0_naive = time.perf_counter()
-
-    with open(test_csv, encoding="utf-8") as f:
-        raw_lines = f.readlines()  # Carga todo el texto en memoria
-        naive_data: list[Rating] = []
-        for line in raw_lines[1:]:
-            parts = line.strip().split(",")
-            naive_data.append({"user_id": int(parts[0]), "movie_id": int(parts[1]), "rating": float(parts[2])})
-
-    naive_stats = _process_chunk_worker(naive_data)
-    t_naive = time.perf_counter() - t0_naive
-    mem_after_naive = process.memory_info().rss / (1024 * 1024)
-    mem_diff_naive = max(0.0, mem_after_naive - mem_before_naive)
-    print(f"Tiempo enfoque ingenuo: {t_naive:.3f} s")
-    print(f"Aumento de memoria RAM: {mem_diff_naive:.2f} MB")
-
-    # Liberamos memoria de la prueba ingenua
-    del raw_lines
-    del naive_data
-    del naive_stats
-
-    # --- PRUEBA 2: Enfoque Optimizado (Buffer + Batching + Multiprocessing) ---
-    print("\n" + "=" * 60)
-    print(">>> 2. ENFOQUE OPTIMIZADO (Buffer I/O + Batches + Paralelismo)")
-    print("=" * 60)
-    mem_before_opt = process.memory_info().rss / (1024 * 1024)
-    t0_opt = time.perf_counter()
-
-    optimized_stats = process_large_file_parallel(
-        filepath=test_csv, batch_size=25000, buffer_size=DEFAULT_BUFFER_SIZE, max_workers=4
-    )
-
-    write_aggregated_results_buffered(result_csv, optimized_stats)
-    t_opt = time.perf_counter() - t0_opt
-    mem_after_opt = process.memory_info().rss / (1024 * 1024)
-    mem_diff_opt = max(0.0, mem_after_opt - mem_before_opt)
-
-    print(f"Tiempo enfoque optimizado: {t_opt:.3f} s")
-    print(f"Aumento de memoria en proceso principal: {mem_diff_opt:.2f} MB")
-
-    speedup = t_naive / t_opt if t_opt > 0 else 1.0
-    print("\n" + "=" * 60)
-    print("RESUMEN COMPARATIVO:")
-    print(f"- Reducción de tiempo / Aceleración: {speedup:.2f}x más rápido")
-
-    print(f"- Control de memoria: {mem_diff_opt:.2f} MB vs {mem_diff_naive:.2f} MB del método ingenuo")
-    print("=" * 60)
-
-    return t_naive, t_opt
+    naive = _measure_naive_approach(process, test_csv)
+    optimized = _measure_optimized_approach(process, test_csv, result_csv)
+    _print_comparison(naive, optimized)
+    return naive[0], optimized[0]
 
 
 if __name__ == "__main__":
